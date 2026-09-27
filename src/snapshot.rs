@@ -91,3 +91,49 @@ impl SnapshotManager {
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_snapshot_integrity() {
+        let dir = tempdir().unwrap();
+        let config = SnapshotConfig {
+            dir: dir.path().to_str().unwrap().to_string(),
+            ..Default::default()
+        };
+        let mut mgr = SnapshotManager::new(&config);
+
+        let mut memory = vec![0u8; 4096];
+        memory[0] = 0xAB;
+        memory[4095] = 0xCD;
+
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
+
+        let mut restored = vec![0u8; 4096];
+        mgr.restore(restored.as_mut_ptr(), restored.len()).unwrap();
+        assert_eq!(restored[0], 0xAB);
+        assert_eq!(restored[4095], 0xCD);
+    }
+
+    #[test]
+    fn test_snapshot_dedup() {
+        let dir = tempdir().unwrap();
+        let config = SnapshotConfig {
+            dir: dir.path().to_str().unwrap().to_string(),
+            ..Default::default()
+        };
+        let mut mgr = SnapshotManager::new(&config);
+
+        let memory = vec![0u8; 4096];
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
+
+        let blocks: Vec<_> = std::fs::read_dir(dir.path()).unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().starts_with("blk_"))
+            .collect();
+        assert_eq!(blocks.len(), 1);
+    }
+}
