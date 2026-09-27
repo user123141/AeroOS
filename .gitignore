@@ -1,0 +1,27 @@
+﻿# Rust
+/target/
+**/*.rs.bk
+
+# Build outputs
+/build/
+/kernel/output/
+/kernel/buildroot/
+/kernel/external/
+
+# Runtime
+/data/
+/snapshots/
+*.log
+*.pdb
+*.ilk
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+Thumbs.db
+.DS_Store

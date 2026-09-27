@@ -1,0 +1,29 @@
+﻿# AeroOS Configuration v0.10.0
+
+[cpu]
+cores = 4
+model = "host"
+
+[memory]
+ram_mb = 8192
+
+[gpu]
+model = "virtio-gpu"
+accel_3d = true
+passthrough = false
+
+[disk]
+# image_path = "disk.img"
+interface = "virtio"
+
+[snapshot]
+auto_interval_ms = 1000
+max_count = 100
+dir = "snapshots"
+dedup = true
+max_size_mb = 10240
+encrypt = false
+
+# embedded  -> kernel inside .exe
+# data_folder -> kernel in data/ next to .exe
+mode = "embedded"

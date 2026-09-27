@@ -1,0 +1,7 @@
+﻿[package]
+name = "whpx"
+version = "0.1.2"
+edition = "2021"
+
+[dependencies]
+winapi = { version = "0.3", features = ["libloaderapi","errhandlingapi","memoryapi"] }
