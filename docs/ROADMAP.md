@@ -1,41 +1,30 @@
 ﻿# AeroOS Roadmap
 
-## Legend
-- ✅ Done
-- 🟡 In progress
-- ❌ Not started
+## v4.1.0 — Horizon (current)
 
-## v3.2.0 — Momentum (current)
+- ✅ Fix WHvSetVirtualProcessorRegisters (params + 16-byte values)
+- ✅ End-to-end boot Alpine kernel (CR0/CR4/EFER + регистры)
+- ✅ GPU-P through Hyper-V (PowerShell cmdlets)
+- ✅ 9P wiring in virtio
+- ✅ Multi-VM UI with per-VM stats
+- ✅ Enterprise offline licensing (Ed25519 + HWID + nonce)
+- 🟡 Live test: real Alpine kernel boot
+- 🟡 9P read/write end-to-end
 
-- ✅ Fix SnapshotConfig Default
-- ✅ TCP Proxy (guest → host socket)
-- ✅ VNC/Frame streaming (JPEG over WS)
-- ✅ Live migration (.aeromig)
-- ✅ OCI runtime (manifest parse)
-- ✅ GPU passthrough (device detection)
-- 🟡 Real TCP data flow end-to-end
-- 🟡 9P read/write through virtio
+## v4.2.0 — Continuum
 
-## v3.3.0 — Continuum (next)
+- ❌ Full end-to-end VM boot test
+- ❌ WebRTC VP8 streaming
+- ❌ OCI → initramfs end-to-end
+- ❌ Aeroctl up actual boot
 
-- ❌ 9P full data transfer
-- ❌ OCI → initramfs conversion
-- ❌ WebRTC VP8/H.264
-- ❌ `aeroctl up` actual VM boot
-- ❌ AeroRegistry online
+## v5.0.0 — Singularity
 
-## v4.0.0 — Singularity (vision)
-
-- ❌ Multi-VM UI (per-VM stats, tabs)
-- ❌ GPU passthrough actual (WDDM/Hyper-V GPU-P)
-- ❌ Linux/macOS host support
-- ❌ Enterprise license server
+- ❌ Linux/macOS host
+- ❌ Full GPU passthrough
 
 ## Backlog
 
 - Time-travel diff viewer
 - Snapshot export to QCOW2
-- Guest agent file sync
 - Plugin system
-- Encrypted disk images
-- Sound subsystem

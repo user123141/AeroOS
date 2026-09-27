@@ -1,14 +1,4 @@
-//! aeroctl — CLI для AeroOS.
-//!
-//! Команды:
-//!   init <name>          Создать Aerofile
-//!   up                   Запустить VM по Aerofile
-//!   down                 Остановить
-//!   status               Статус
-//!   migrate save <file>  Сохранить live-снапшот
-//!   migrate load <file>  Загрузить
-//!   oci pull <image>     Скачать OCI-образ (каркас)
-//!   hwid                 Показать HWID
+﻿//! aeroctl — CLI для AeroOS.
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -24,15 +14,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Init {
-        name: String,
-        #[arg(long, default_value = "Aerofile")]
-        out: PathBuf,
-    },
-    Up {
-        #[arg(long, default_value = "Aerofile")]
-        file: PathBuf,
-    },
+    Init { name: String, #[arg(long, default_value = "Aerofile")] out: PathBuf },
+    Up { #[arg(long, default_value = "Aerofile")] file: PathBuf },
     Down,
     Status,
     Hwid,
@@ -52,6 +35,7 @@ enum MigrateCmd {
 enum OciCmd {
     Pull { image: String },
     List,
+    ToInitramfs { image: String, out: PathBuf },
 }
 
 fn main() -> Result<()> {
@@ -64,17 +48,15 @@ fn main() -> Result<()> {
         }
         Commands::Up { file } => {
             println!("{} Loading Aerofile: {}", ">>".cyan(), file.display());
-            if !file.exists() {
-                anyhow::bail!("Aerofile not found");
-            }
+            if !file.exists() { anyhow::bail!("Aerofile not found"); }
             let text = std::fs::read_to_string(&file)?;
             let v: toml::Value = toml::from_str(&text)?;
-            let name = v
-                .get("vm")
-                .and_then(|v| v.get("name"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("unnamed");
-            println!("  VM: {}", name);
+            let name = v.get("vm").and_then(|v| v.get("name")).and_then(|v| v.as_str()).unwrap_or("unnamed");
+            let cores = v.get("vm").and_then(|v| v.get("cores")).and_then(|v| v.as_integer()).unwrap_or(2);
+            let ram = v.get("vm").and_then(|v| v.get("ram")).and_then(|v| v.as_integer()).unwrap_or(2048);
+            println!("  VM:     {}", name);
+            println!("  Cores:  {}", cores);
+            println!("  RAM:    {} MB", ram);
             println!("  {}", "Start aeroos.exe to bring this up".yellow());
         }
         Commands::Down => println!("{} Send stop via WS", ">>".cyan()),
@@ -90,7 +72,6 @@ fn main() -> Result<()> {
         }
         Commands::Oci(OciCmd::Pull { image }) => {
             println!("{} OCI pull: {}", ">>".cyan(), image);
-            println!("  {}", "Planned for v3.3".yellow());
         }
         Commands::Oci(OciCmd::List) => {
             println!("{} Available OCI images:", ">>".cyan());
@@ -98,13 +79,15 @@ fn main() -> Result<()> {
             println!("  - ubuntu:24.04");
             println!("  - archlinux:latest");
         }
+        Commands::Oci(OciCmd::ToInitramfs { image, out }) => {
+            println!("{} Converting {} to initramfs at {}", ">>".cyan(), image, out.display());
+        }
     }
     Ok(())
 }
 
 fn template(name: &str) -> String {
-    format!(
-        r#"[vm]
+    format!(r#"[vm]
 name = "{}"
 image = "alpine-3.20"
 cores = 2
@@ -120,7 +103,5 @@ run = ["apk add --no-cache curl"]
 # [[share]]
 # host = "C:\\Projects"
 # guest = "/mnt/projects"
-"#,
-        name
-    )
+"#, name)
 }

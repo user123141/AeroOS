@@ -1,5 +1,5 @@
 ﻿# AeroOS Structure
-# 2026-09-28 01:27:17
+# 2026-09-28 01:35:49
 
 |-- .cargo/
 |   |-- config.toml
@@ -53,6 +53,7 @@
 |   |-- aerofile.rs
 |   |-- agent.rs
 |   |-- boot.rs
+|   |-- boot_vm.rs
 |   |-- config.rs
 |   |-- crypto.rs
 |   |-- data_folder.rs
@@ -67,6 +68,7 @@
 |   |-- net_proxy.rs
 |   |-- net_smoltcp.rs
 |   |-- oci.rs
+|   |-- registry.rs
 |   |-- sandbox.rs
 |   |-- security.rs
 |   |-- snapshot.rs
@@ -74,6 +76,7 @@
 |   |-- terminal.rs
 |   |-- virtio.rs
 |   |-- virtio_9p.rs
+|   |-- virtio_fs.rs
 |   |-- vnc.rs
 |   |-- web.rs
 |-- vendor/

@@ -1,6 +1,6 @@
-use crate::config::SnapshotConfig;
+﻿use crate::config::SnapshotConfig;
 use crate::security;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -64,7 +64,6 @@ impl SnapshotManager {
             }
             let data = unsafe { std::slice::from_raw_parts(memory.add(off), P) };
 
-            // Zero-page skip
             if Self::is_zero_page(data) {
                 manifest.push((*page, "zero".to_string()));
                 zero_count += 1;
@@ -94,7 +93,7 @@ impl SnapshotManager {
         Ok(())
     }
 
-    /// Экспорт в QCOW2 — можно запустить в QEMU/KVM на Linux.
+    /// Экспорт в raw-формат (QCOW2 потом).
     pub fn export_qcow2(&self, memory: *const u8, size: usize, out_path: &Path) -> Result<()> {
         tracing::info!("Exporting raw image to {}", out_path.display());
         let data = unsafe { std::slice::from_raw_parts(memory, size) };
@@ -105,7 +104,7 @@ impl SnapshotManager {
         Ok(())
     }
 
-    /// Быстрая проверка целостности всех блоков.
+    /// Проверка целостности всех блоков.
     pub fn verify_integrity(&self) -> Result<u64> {
         let dir = PathBuf::from(&self.config.dir);
         let mut checked = 0u64;
@@ -120,12 +119,7 @@ impl SnapshotManager {
             let decompressed = lz4_flex::decompress_size_prepended(&data)?;
             let actual = blake3::hash(&decompressed).to_hex().to_string();
             if actual != expected {
-                anyhow::bail!(
-                    "Corrupt block: {} (expected {}, got {})",
-                    name,
-                    expected,
-                    actual
-                );
+                anyhow::bail!("Corrupt block: {}", name);
             }
             checked += 1;
         }
@@ -144,6 +138,47 @@ impl SnapshotManager {
             std::fs::remove_file(o.path()).ok();
         }
         Ok(())
+    }
+
+    // === Public API для IPC ===
+
+    /// Создать именованный снапшот из готовых данных.
+    pub fn create_snapshot(&mut self, data: &[u8], name: &str) -> Result<PathBuf> {
+        let dir = PathBuf::from(&self.config.dir);
+        std::fs::create_dir_all(&dir).ok();
+        let snap_path = dir.join(format!("{}.snap", name));
+        let compressed = lz4_flex::compress_prepend_size(data);
+        std::fs::write(&snap_path, &compressed)?;
+        tracing::info!("Snapshot '{}' created: {} -> {} bytes", name, data.len(), compressed.len());
+        Ok(snap_path)
+    }
+
+    /// Восстановить именованный снапшот в память.
+    pub fn restore_snapshot(&self, name: &str) -> Result<Vec<u8>> {
+        let path = PathBuf::from(&self.config.dir).join(format!("{}.snap", name));
+        if !path.exists() {
+            anyhow::bail!("Snapshot '{}' not found", name);
+        }
+        let compressed = std::fs::read(&path)?;
+        let data = lz4_flex::decompress_size_prepended(&compressed)?;
+        tracing::info!("Snapshot '{}' restored: {} bytes", name, data.len());
+        Ok(data)
+    }
+
+    /// Список всех именованных снапшотов.
+    pub fn list_snapshots(&self) -> Vec<String> {
+        let dir = PathBuf::from(&self.config.dir);
+        let mut list = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for e in entries.flatten() {
+                let name = e.file_name().to_string_lossy().to_string();
+                if name.ends_with(".snap") {
+                    list.push(name.trim_end_matches(".snap").to_string());
+                }
+            }
+        }
+        list.sort();
+        list
     }
 
     pub async fn start_streaming(
@@ -193,8 +228,7 @@ mod tests {
         memory[4095] = 0xCD;
         memory[4096] = 0xEF;
 
-        mgr.create_incremental(memory.as_ptr(), memory.len(), &[])
-            .unwrap();
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
         let n = mgr.verify_integrity().unwrap();
         assert!(n >= 2, "Should have at least 2 non-zero blocks");
     }
@@ -219,10 +253,8 @@ mod tests {
         let mut memory = vec![0u8; 4096];
         memory[0] = 1;
 
-        mgr.create_incremental(memory.as_ptr(), memory.len(), &[])
-            .unwrap();
-        mgr.create_incremental(memory.as_ptr(), memory.len(), &[])
-            .unwrap();
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
 
         let blocks: Vec<_> = std::fs::read_dir(dir.path())
             .unwrap()
@@ -230,5 +262,21 @@ mod tests {
             .filter(|e| e.file_name().to_string_lossy().starts_with("blk_"))
             .collect();
         assert_eq!(blocks.len(), 1, "Dedup should keep only 1 block");
+    }
+
+    #[test]
+    fn test_named_snapshot_roundtrip() {
+        let dir = tempdir().unwrap();
+        let config = SnapshotConfig {
+            dir: dir.path().to_str().unwrap().to_string(),
+            ..Default::default()
+        };
+        let mut mgr = SnapshotManager::new(&config);
+
+        let data = vec![0xAAu8; 4096];
+        mgr.create_snapshot(&data, "test1").unwrap();
+        let restored = mgr.restore_snapshot("test1").unwrap();
+        assert_eq!(restored.len(), data.len());
+        assert!(mgr.list_snapshots().contains(&"test1".to_string()));
     }
 }

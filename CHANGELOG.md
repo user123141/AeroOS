@@ -1,32 +1,115 @@
 ﻿# Changelog
 
-## [3.2.0] - 2026-09-28 — "Momentum"
+
+
+
+
+
+
+
+## [4.1.8] - 2026-09-28
 
 ### Fixed
-- **КРИТИЧНО:** `SnapshotConfig: Default` — добавлен `impl Default` в `config.rs`
-- `hypervisor.rs` — убран unnecessary `unsafe` блок
-
-### Added
-- **TCP Proxy** (`src/net_proxy.rs`) — реальный guest → host socket bridge
-- **VNC/Frame streaming** (`src/vnc.rs`) — framebuffer → JPEG → WebSocket
-- **Live migration** (`src/migration.rs`) — `.aeromig` формат + тесты
-- **OCI runtime** (`src/oci.rs`) — разбор манифестов, тесты
-- **GPU passthrough** (`src/gpu_passthrough.rs`) — детект GPU через WMI
-- `image` crate — JPEG encoding
-- CLI: `aeroctl migrate save/load`, `aeroctl oci pull/list`
+- **КРИТИЧНО:** `src/main.rs` — при `VM skipped` главный процесс завершался мгновенно
+  (`tokio::select!` видел завершённую ветку и выходил). Теперь `std::future::pending()` держит процесс живым.
+- Все сообщения tracing переведены на английский (устранены кракозябры в консоли)
+- Логика fallback: если WHPX недоступен, UI продолжает работать
 
 ### Changed
-- `Cargo.toml` — версия 3.2.0, добавлен `image`
-- `main.rs` — подключены все новые модули
-- Объединены v3.1 "Continuum" и v3.2 "Horizon" в одну итерацию
+- `tracing::info!("[AeroOS] v4.1.8 starting")` — теперь версия в строке старта соответствует Cargo.toml
 
-## [3.0.0] - 2026-09-28 — "Singularity"
+### Verified
+- `.exe` собирается ✅
+- `.exe` запускается, HTTP сервер поднимается ✅
+- UI доступен на http://127.0.0.1:8080 ✅
+- Fallback без hypervisor работает ✅
+## [4.1.6] - 2026-09-28
+
 ### Fixed
-- smoltcp 0.11 Device trait (лaйфтаймы + Instant)
-- config.rs ram_only, .cargo/config.toml (OOM)
+- **КРИТИЧНО:** `src/boot_vm.rs` — magic "HdrS" читался как u16, а нужен u32 (0x53726448)
+- **КРИТИЧНО:** bump версии не работал — regex не находил 4.1.4 в Cargo.toml
+- Добавлена проверка `boot_flag == 0xAA55`
+- Проверка границ при копировании setup header
 
-## [2.9.0] - Vertex
-## [2.8.0] - Aurora
-## [2.7.0] - Forge
-## [2.0.0] - Fusion
+### Added
+- **docs/SESSION.md** — рабочий контекст (структура, API, константы, TODO)
+- Явные константы boot protocol в комментариях
+
+### Changed
+- `boot_vm.rs` — полная перезапись с правильными смещениями
+## [4.1.5] - 2026-09-28
+
+### Fixed
+- **КРИТИЧНО:** `src/oci.rs` — `walkdir` не был в `Cargo.toml`
+- Добавлен `walkdir = "2.5"` в зависимости
+
+### Added
+- **docs/API.md** — справочник публичного API всех модулей (ручной, но полный)
+## [4.1.4] - 2026-09-28
+
+### Fixed
+- **КРИТИЧНО:** `src/snapshot.rs` — методы `create_snapshot`/`restore_snapshot`/`list_snapshots` были внутри `mod tests`, теперь в `impl SnapshotManager`
+- **КРИТИЧНО:** `src/hypervisor.rs` — `use whpx::MapFlags;` (был в корне, не в `ffi`)
+- `hypervisor.rs` — убран `unsafe` вокруг `exit.IoPortAccess.Port`
+- `whpx/lib.rs` — `pub use ffi::WHvMapGpaRangeFlags as MapFlags;`
+
+### Added
+- Тест `test_named_snapshot_roundtrip` для именованных снапшотов
+## [4.1.3] - 2026-09-28
+
+### Fixed
+- **КРИТИЧНО:** `src/ipc.rs` — вызовы методов, которых не существовало:
+  - `VirtualMachine::get_state()` и `restore_state()` — **добавлены** в hypervisor.rs
+  - `SnapshotManager::create_snapshot()`, `restore_snapshot()`, `list_snapshots()` — **добавлены**
+- `src/virtio_fs.rs` — все async-методы теперь вызываются с `.await`
+- Serial output совместим с `console=ttyS0,115200`
+
+### Added
+- **Serial output** через COM1 (port 0x3F8) — можно смотреть вывод ядра
+- IPC команды `GetSerial` / `ClearSerial` — UI может читать serial лог
+- Boot cmdline расширен: `earlyprintk=serial,ttyS0,115200`
+- Serial buffer 64 KB
+
+### Changed
+- `console=ttyS0,115200 earlyprintk=serial,ttyS0,115200 quiet` — стандартный Linux serial для отладки
+## [4.1.2] - 2026-09-28
+
+### Fixed
+- **КРИТИЧНО:** `src/ipc.rs` — полностью переписан (regex-replace из v4.1.0 сломал `#[derive(Deserialize)]`)
+- `src/oci.rs` — убран unused `mut` в `CpioNewcBuilder::finish`
+- `src/hypervisor.rs` — добавлен `#![allow(dead_code)]` для служебных полей
+
+### Added
+- `Command::ListSnapshots` в IPC (для UI timeline)
+- `Response::VmsList` с per-VM статистикой
+## [4.1.1] - 2026-09-28
+
+### Fixed
+- `whpx::Partition::map_gpa_range` — тип `MapFlags` импортировался из `ffi`, но он re-export на верхнем уровне
+
+### Changed
+- `tokio` — убраны неиспользуемые features (`signal`, `io-std`)
+## [4.1.0] - 2026-09-28 — "Horizon"
+
+### Fixed
+- **КРИТИЧНО:** `WHvSetVirtualProcessorRegisters` — правильный порядок `(handle, names_ptr, count, values_ptr)`
+- **КРИТИЧНО:** Регистры теперь передаются как 16-байтовые `WHvRegisterValue` (union)
+- Boot: правильная загрузка setup + kernel раздельно
+
+### Added
+- **End-to-end boot** — `setup_vcpu_registers` с CR0/CR4/EFER для long mode
+- **GPU-P** (`gpu_passthrough.rs`) — реальный Hyper-V GPU Partitioning через PowerShell
+- **9P wiring** — `virtio.rs` вызывает `virtio_fs::VirtioFsServer`
+- **Multi-VM UI** — per-VM статистика в dashboard + авто-обновление
+- **Enterprise offline licensing** — Ed25519 + HWID + nonce, без сервера
+- **Tier gating** — `max_vms()`, `max_ram_mb()`, `can_use()` по тиру
+
+### Changed
+- `Cargo.toml` — версия 4.1.0
+- `license.rs` — payload v2 с nonce (защита от replay)
+- `gen-license` — флаг `--nonce`, автоматическая генерация
+
+## [4.0.0] - Genesis
+## [3.3.0] - Continuum
+## [3.0.0] - Singularity
 ## [1.0.0] - Initial

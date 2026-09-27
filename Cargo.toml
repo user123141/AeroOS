@@ -1,6 +1,6 @@
 ﻿[package]
 name = "aeroos"
-version = "3.2.0"
+version = "4.1.8"
 edition = "2021"
 authors = ["AeroOS Contributors"]
 description = "AeroOS — Portable OS for Windows in a single executable"
@@ -30,7 +30,7 @@ harness = false
 whpx   = { path = "vendor/whpx" }
 conpty = { path = "vendor/conpty" }
 
-tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "io-util", "io-std", "fs"] }
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "time", "sync", "io-util", "fs"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 tokio-tungstenite = "0.24"
 hyper = { version = "1.0", features = ["http1", "server"] }
@@ -57,14 +57,20 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "std"] }
 anyhow = "1.0"
 thiserror = "2.0"
 arboard = "3.4"
-ureq = { version = "2.10", features = ["json", "tls"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 
+# --- Networking ---
 smoltcp = { version = "0.11", default-features = false, features = [
     "std", "medium-ethernet", "medium-ip", "proto-ipv4", "proto-igmp",
     "proto-dhcpv4", "socket-tcp", "socket-udp", "socket-icmp", "socket-dhcpv4",
 ] }
 socket2 = { version = "0.5", features = ["all"] }
+
+# --- OCI / Registry (без linux-loader) ---
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tar = "0.4"
+walkdir = "2.5"
+flate2 = "1.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["libloaderapi", "errhandlingapi", "memoryapi", "consoleapi", "handleapi", "namedpipeapi", "processenv", "winbase", "wincon", "winnt", "fileapi", "minwindef", "winuser", "std", "securitybaseapi", "processthreadsapi", "winerror"] }

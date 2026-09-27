@@ -1,6 +1,4 @@
 ﻿#![allow(non_snake_case, static_mut_refs, dead_code)]
-//! Vendored WHPX bindings for AeroOS.
-//! Динамическая загрузка через LoadLibraryA + GetProcAddress.
 
 extern crate std;
 use std::ffi::c_void;
@@ -27,9 +25,29 @@ pub mod ffi {
     pub const WHV_RUN_VP_EXIT_REASON_X64_IO_PORT_ACCESS: u32 = 0x00000001;
     pub const WHV_RUN_VP_EXIT_REASON_X64_HALT: u32           = 0x00000006;
 
-    pub const WHV_X64_REGISTER_RIP: u32    = 0x00000020;
-    pub const WHV_X64_REGISTER_RSP: u32    = 0x00000021;
-    pub const WHV_X64_REGISTER_RFLAGS: u32 = 0x00000022;
+    // x64 registers
+    pub const WHV_X64_REGISTER_RAX: u32    = 0x00000000;
+    pub const WHV_X64_REGISTER_RBX: u32    = 0x00000003;
+    pub const WHV_X64_REGISTER_RCX: u32    = 0x00000001;
+    pub const WHV_X64_REGISTER_RDX: u32    = 0x00000002;
+    pub const WHV_X64_REGISTER_RSI: u32    = 0x00000004;
+    pub const WHV_X64_REGISTER_RDI: u32    = 0x00000005;
+    pub const WHV_X64_REGISTER_RSP: u32    = 0x00000006;
+    pub const WHV_X64_REGISTER_RBP: u32    = 0x00000007;
+    pub const WHV_X64_REGISTER_R8:  u32    = 0x00000008;
+    pub const WHV_X64_REGISTER_R9:  u32    = 0x00000009;
+    pub const WHV_X64_REGISTER_R10: u32    = 0x0000000A;
+    pub const WHV_X64_REGISTER_R11: u32    = 0x0000000B;
+    pub const WHV_X64_REGISTER_R12: u32    = 0x0000000C;
+    pub const WHV_X64_REGISTER_R13: u32    = 0x0000000D;
+    pub const WHV_X64_REGISTER_R14: u32    = 0x0000000E;
+    pub const WHV_X64_REGISTER_R15: u32    = 0x0000000F;
+    pub const WHV_X64_REGISTER_RIP: u32    = 0x00000010;
+    pub const WHV_X64_REGISTER_RFLAGS: u32 = 0x00000011;
+    pub const WHV_X64_REGISTER_CR0: u32    = 0x0000001C;
+    pub const WHV_X64_REGISTER_CR3: u32    = 0x0000001E;
+    pub const WHV_X64_REGISTER_CR4: u32    = 0x00000020;
+    pub const WHV_X64_REGISTER_EFER: u32   = 0x00000036;
 
     #[repr(C)]
     #[derive(Copy, Clone)]
@@ -84,6 +102,18 @@ pub mod ffi {
         }
     }
 
+    /// 16-byte register value (union in the C API).
+    #[repr(C, align(16))]
+    #[derive(Copy, Clone)]
+    pub struct WHvRegisterValue {
+        pub low: u64,
+        pub high: u64,
+    }
+    impl WHvRegisterValue {
+        pub fn from_u64(v: u64) -> Self { Self { low: v, high: 0 } }
+        pub fn zero() -> Self { Self { low: 0, high: 0 } }
+    }
+
     #[derive(Clone, Copy)]
     pub enum WHvPartitionPropertyCode {
         ProcessorCount,
@@ -118,31 +148,50 @@ pub mod ffi {
             }
         }
     }
+}
 
-    #[derive(Clone, Copy)]
-    pub enum WHvX64Register { Rip, Rsp, Rflags }
-    impl WHvX64Register {
-        pub fn as_u32(self) -> u32 {
-            match self {
-                Self::Rip    => WHV_X64_REGISTER_RIP,
-                Self::Rsp    => WHV_X64_REGISTER_RSP,
-                Self::Rflags => WHV_X64_REGISTER_RFLAGS,
-            }
+/// Регистры x64 (name + value).
+#[derive(Clone, Copy)]
+pub enum Register {
+    Rip, Rsp, Rflags, Rsi, Rax, Rcx, Rdx, Rbx,
+    Rdi, Cr0, Cr3, Cr4, Efer,
+}
+impl Register {
+    pub fn name(self) -> u32 {
+        use ffi::*;
+        match self {
+            Self::Rax    => WHV_X64_REGISTER_RAX,
+            Self::Rbx    => WHV_X64_REGISTER_RBX,
+            Self::Rcx    => WHV_X64_REGISTER_RCX,
+            Self::Rdx    => WHV_X64_REGISTER_RDX,
+            Self::Rsi    => WHV_X64_REGISTER_RSI,
+            Self::Rdi    => WHV_X64_REGISTER_RDI,
+            Self::Rsp    => WHV_X64_REGISTER_RSP,
+            Self::Rip    => WHV_X64_REGISTER_RIP,
+            Self::Rflags => WHV_X64_REGISTER_RFLAGS,
+            Self::Cr0    => WHV_X64_REGISTER_CR0,
+            Self::Cr3    => WHV_X64_REGISTER_CR3,
+            Self::Cr4    => WHV_X64_REGISTER_CR4,
+            Self::Efer   => WHV_X64_REGISTER_EFER,
         }
     }
-    pub use WHvX64Register::Rip    as WHvX64RegisterRip;
-    pub use WHvX64Register::Rsp    as WHvX64RegisterRsp;
-    pub use WHvX64Register::Rflags as WHvX64RegisterRflags;
 }
 
 pub struct WhpxBindings {
-    pub create_partition: unsafe extern "system" fn(*mut ffi::WHvPartitionHandle) -> ffi::HResult,
-    pub setup_partition: unsafe extern "system" fn(ffi::WHvPartitionHandle) -> ffi::HResult,
-    pub delete_partition: unsafe extern "system" fn(ffi::WHvPartitionHandle) -> ffi::HResult,
+    pub create_partition:       unsafe extern "system" fn(*mut ffi::WHvPartitionHandle) -> ffi::HResult,
+    pub setup_partition:        unsafe extern "system" fn(ffi::WHvPartitionHandle) -> ffi::HResult,
+    pub delete_partition:       unsafe extern "system" fn(ffi::WHvPartitionHandle) -> ffi::HResult,
     pub set_partition_property: unsafe extern "system" fn(ffi::WHvPartitionHandle, u32, *const c_void, u32) -> ffi::HResult,
-    pub map_gpa_range: unsafe extern "system" fn(ffi::WHvPartitionHandle, *const c_void, u64, u64, u32) -> ffi::HResult,
-    pub create_vp: unsafe extern "system" fn(ffi::WHvPartitionHandle, u32) -> ffi::HResult,
-    pub run_vp: unsafe extern "system" fn(ffi::WHvVirtualProcessorHandle, *mut ffi::WHvRunVpExitContext) -> ffi::HResult,
+    pub map_gpa_range:          unsafe extern "system" fn(ffi::WHvPartitionHandle, *const c_void, u64, u64, u32) -> ffi::HResult,
+    pub create_vp:              unsafe extern "system" fn(ffi::WHvPartitionHandle, u32) -> ffi::HResult,
+    pub run_vp:                 unsafe extern "system" fn(ffi::WHvVirtualProcessorHandle, *mut ffi::WHvRunVpExitContext) -> ffi::HResult,
+    // Правильная сигнатура: (handle, names_ptr, count, values_ptr)
+    pub set_vp_registers: unsafe extern "system" fn(
+        ffi::WHvVirtualProcessorHandle,
+        *const u32,
+        u32,
+        *const ffi::WHvRegisterValue,
+    ) -> ffi::HResult,
 }
 
 static mut BINDINGS: Option<WhpxBindings> = None;
@@ -165,6 +214,7 @@ pub fn init_bindings() -> Result<(), String> {
             map_gpa_range:          transmute(get(b"WHvMapGpaRange\0")),
             create_vp:              transmute(get(b"WHvCreateVirtualProcessor\0")),
             run_vp:                 transmute(get(b"WHvRunVirtualProcessor\0")),
+            set_vp_registers:       transmute(get(b"WHvSetVirtualProcessorRegisters\0")),
         });
         INIT = true;
         Ok(())
@@ -207,7 +257,7 @@ impl Partition {
             if hr < 0 { Err(format!("set_property: 0x{:X}", hr)) } else { Ok(()) }
         }
     }
-    pub fn map_gpa_range(&mut self, region: &ffi::MemoryRegion, flags: ffi::WHvMapGpaRangeFlags) -> Result<(), String> {
+    pub fn map_gpa_range(&mut self, region: &ffi::MemoryRegion, flags: MapFlags) -> Result<(), String> {
         unsafe {
             let b = BINDINGS.as_ref().ok_or("WHPX not initialized")?;
             let hr = (b.map_gpa_range)(
@@ -222,7 +272,12 @@ impl Partition {
 unsafe impl Send for Partition {}
 unsafe impl Sync for Partition {}
 
-pub struct VirtualProcessor { pub handle: ffi::WHvVirtualProcessorHandle, pub partition: ffi::WHvPartitionHandle }
+pub use ffi::WHvMapGpaRangeFlags as MapFlags;
+
+pub struct VirtualProcessor {
+    pub handle: ffi::WHvVirtualProcessorHandle,
+    pub partition: ffi::WHvPartitionHandle,
+}
 impl VirtualProcessor {
     pub fn new(p: &Partition, idx: u32) -> Result<Self, String> {
         unsafe {
@@ -232,9 +287,26 @@ impl VirtualProcessor {
             Ok(Self { handle: std::ptr::null_mut(), partition: p.handle })
         }
     }
-    pub fn set_registers(&mut self, _regs: &[(ffi::WHvX64Register, u64)]) -> Result<(), String> {
-        Ok(())
+
+    /// Устанавливает регистры. Порядок параметров правильный:
+    /// (handle, names_ptr, count, values_ptr). Значения — 16-byte WHvRegisterValue.
+    pub fn set_registers(&mut self, regs: &[(Register, u64)]) -> Result<(), String> {
+        unsafe {
+            let b = BINDINGS.as_ref().ok_or("WHPX not initialized")?;
+            let names: Vec<u32> = regs.iter().map(|(r, _)| r.name()).collect();
+            let values: Vec<ffi::WHvRegisterValue> = regs.iter()
+                .map(|(_, v)| ffi::WHvRegisterValue::from_u64(*v))
+                .collect();
+            let hr = (b.set_vp_registers)(
+                self.handle,
+                names.as_ptr(),
+                names.len() as u32,
+                values.as_ptr(),
+            );
+            if hr < 0 { Err(format!("WHvSetVirtualProcessorRegisters: 0x{:X}", hr)) } else { Ok(()) }
+        }
     }
+
     pub fn run(&mut self) -> Result<ffi::WHvRunVpExitContext, String> {
         unsafe {
             let b = BINDINGS.as_ref().ok_or("WHPX not initialized")?;

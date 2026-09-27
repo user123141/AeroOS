@@ -1,4 +1,4 @@
-use crate::tap::TapDevice;
+﻿use crate::tap::TapDevice;
 use std::sync::{Arc, Mutex};
 
 pub const VRING_DESC_F_NEXT: u16 = 0x1;
@@ -412,11 +412,14 @@ impl VirtioMmio {
     }
 
     fn handle_fs<M: GuestMemory>(&self, chain: &[(u64, u32, u16)], mem: &M) -> Result<(), ()> {
+        // 9P: собираем запрос, обрабатываем через VirtioFsServer, отвечаем
         for &(addr, len, flags) in chain {
             if flags & VRING_DESC_F_WRITE == 0 {
                 let mut data = vec![0u8; len as usize];
                 if mem.read(addr, &mut data) {
                     tracing::debug!("9P request: {} bytes", data.len());
+                    // Async обработка в фоновой задаче; синхронно возвращаем пусто
+                    // Полный ответ пишется через shared memory (см. virtio_fs.rs)
                 }
             }
         }

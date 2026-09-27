@@ -44,6 +44,9 @@ function handle(d) {
       setText('dirty-pages', d.dirty_pages);
       if (window.pushChart) window.pushChart(d.dirty_pages);
       break;
+    case 'VmsList':
+      renderVmStats(d.vms);
+      break;
     case 'Snapshots':
       if (window.updateTimeline) window.updateTimeline(d.list);
       break;
@@ -77,3 +80,22 @@ function initDock() {
     };
   });
 }
+function renderVmStats(vms) {
+  const grid = document.getElementById('vm-stats-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  vms.forEach(vm => {
+    const card = document.createElement('div');
+    card.className = 'vm-stat-card';
+    card.innerHTML = `
+      <div class="vm-stat-name">${vm.name}</div>
+      <div class="vm-stat-row"><span>ID</span><span>${vm.id}</span></div>
+      <div class="vm-stat-row"><span>State</span><span class="${vm.running ? 'on' : 'off'}">${vm.running ? 'Running' : 'Stopped'}</span></div>
+      <div class="vm-stat-row"><span>Snapshots</span><span>${vm.snapshots}</span></div>
+      <div class="vm-stat-row"><span>Dirty</span><span>${vm.dirty_pages}</span></div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+setInterval(() => send({ type: 'ListVms' }), 3000);
