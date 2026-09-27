@@ -1,4 +1,4 @@
-﻿//! Data Folder mode: load kernel/initramfs from `data/` next to the executable.
+//! Data Folder mode: load kernel/initramfs from `data/` next to the executable.
 //! Falls back to embedded resources if `mode = "embedded"`.
 
 use crate::config::AeroConfig;
@@ -43,7 +43,8 @@ impl DataFolder {
         if !k.exists() || !i.exists() {
             anyhow::bail!(
                 "Data Folder mode requires {} and {}",
-                k.display(), i.display()
+                k.display(),
+                i.display()
             );
         }
         tracing::info!("Data Folder mode: kernel at {}", k.display());
@@ -51,14 +52,22 @@ impl DataFolder {
     }
 
     pub fn kernel_path(&self) -> PathBuf {
-        if self.embedded { PathBuf::from("kernel/aeroos-kernel") }
-        else { self.base.join("aeroos-kernel") }
+        if self.embedded {
+            PathBuf::from("kernel/aeroos-kernel")
+        } else {
+            self.base.join("aeroos-kernel")
+        }
     }
 
     pub fn initramfs_path(&self) -> PathBuf {
-        if self.embedded { PathBuf::from("kernel/aeroos-initramfs") }
-        else { self.base.join("aeroos-initramfs") }
+        if self.embedded {
+            PathBuf::from("kernel/aeroos-initramfs")
+        } else {
+            self.base.join("aeroos-initramfs")
+        }
     }
 
-    pub fn base_dir(&self) -> &Path { &self.base }
+    pub fn base_dir(&self) -> &Path {
+        &self.base
+    }
 }

@@ -1,11 +1,11 @@
-﻿//! AES-256-GCM encryption for snapshots.
+//! AES-256-GCM encryption for snapshots.
 //! Key derivation: Argon2id(password, salt, 100_000 iterations).
 
+use aes_gcm::aead::rand_core::RngCore;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Key, Nonce,
 };
-use aes_gcm::aead::rand_core::RngCore;
 use anyhow::{bail, Context, Result};
 
 pub const SALT_LEN: usize = 16;
@@ -21,7 +21,7 @@ pub struct Encryptor {
 impl Encryptor {
     /// Derive key from password using Argon2id.
     pub fn new(password: &[u8], salt: [u8; SALT_LEN]) -> Result<Self> {
-        use argon2::{Argon2, Algorithm, Params, Version};
+        use argon2::{Algorithm, Argon2, Params, Version};
         let params = Params::new(64 * 1024, 3, 1, Some(KEY_LEN))
             .map_err(|e| anyhow::anyhow!("argon2 params: {}", e))?;
         let a = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
@@ -29,7 +29,10 @@ impl Encryptor {
         a.hash_password_into(password, &salt, &mut key_bytes)
             .map_err(|e| anyhow::anyhow!("argon2: {}", e))?;
         let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
-        Ok(Self { cipher: Aes256Gcm::new(key), salt })
+        Ok(Self {
+            cipher: Aes256Gcm::new(key),
+            salt,
+        })
     }
 
     /// Encrypt plaintext. Returns nonce || ciphertext (16-byte tag appended).
@@ -37,7 +40,9 @@ impl Encryptor {
         let mut nonce_bytes = [0u8; NONCE_LEN];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
-        let ct = self.cipher.encrypt(nonce, plaintext)
+        let ct = self
+            .cipher
+            .encrypt(nonce, plaintext)
             .map_err(|e| anyhow::anyhow!("encrypt: {}", e))?;
         let mut out = Vec::with_capacity(NONCE_LEN + ct.len());
         out.extend_from_slice(&nonce_bytes);
@@ -46,15 +51,21 @@ impl Encryptor {
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
-        if data.len() < NONCE_LEN + 16 { bail!("ciphertext too short"); }
+        if data.len() < NONCE_LEN + 16 {
+            bail!("ciphertext too short");
+        }
         let (nonce_bytes, ct) = data.split_at(NONCE_LEN);
         let nonce = Nonce::from_slice(nonce_bytes);
-        let pt = self.cipher.decrypt(nonce, ct)
+        let pt = self
+            .cipher
+            .decrypt(nonce, ct)
             .map_err(|e| anyhow::anyhow!("decrypt: {}", e))?;
         Ok(pt)
     }
 
-    pub fn salt(&self) -> [u8; SALT_LEN] { self.salt }
+    pub fn salt(&self) -> [u8; SALT_LEN] {
+        self.salt
+    }
 }
 
 /// Generate a random salt.

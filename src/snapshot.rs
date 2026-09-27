@@ -1,4 +1,4 @@
-﻿use crate::config::SnapshotConfig;
+use crate::config::SnapshotConfig;
 use crate::security;
 use anyhow::Result;
 use std::collections::HashMap;
@@ -17,24 +17,41 @@ impl SnapshotManager {
     pub fn new(config: &SnapshotConfig) -> Self {
         let d = PathBuf::from(&config.dir);
         std::fs::create_dir_all(&d).ok();
-        Self { config: config.clone(), block_index: HashMap::new(), bytes_written: 0 }
+        Self {
+            config: config.clone(),
+            block_index: HashMap::new(),
+            bytes_written: 0,
+        }
     }
 
     /// Вызывается синхронно, указатель живёт только внутри функции.
-    pub fn create_incremental(&mut self, memory: *const u8, size: usize, dirty: &[u64]) -> Result<()> {
+    pub fn create_incremental(
+        &mut self,
+        memory: *const u8,
+        size: usize,
+        dirty: &[u64],
+    ) -> Result<()> {
         const P: usize = 4096;
         let dir = PathBuf::from(&self.config.dir);
-        let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis();
-        if self.config.max_size_mb > 0 && self.bytes_written / (1024*1024) > self.config.max_size_mb {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_millis();
+        if self.config.max_size_mb > 0
+            && self.bytes_written / (1024 * 1024) > self.config.max_size_mb
+        {
             self.cleanup_oldest()?;
         }
         let pages: Vec<u64> = if dirty.is_empty() {
             (0..size / P).map(|i| i as u64).collect()
-        } else { dirty.to_vec() };
+        } else {
+            dirty.to_vec()
+        };
         let mut manifest: Vec<(u64, String)> = Vec::new();
         for page in &pages {
             let off = (*page as usize) * P;
-            if off + P > size { break; }
+            if off + P > size {
+                break;
+            }
             let data = unsafe { std::slice::from_raw_parts(memory.add(off), P) };
             let h = blake3::hash(data).to_hex().to_string();
             if !self.block_index.contains_key(&h) {
@@ -61,7 +78,9 @@ impl SnapshotManager {
             .filter(|e| e.file_name().to_string_lossy().starts_with("inc_"))
             .collect();
         s.sort_by_key(|e| e.file_name());
-        if let Some(o) = s.first() { std::fs::remove_file(o.path()).ok(); }
+        if let Some(o) = s.first() {
+            std::fs::remove_file(o.path()).ok();
+        }
         Ok(())
     }
 
@@ -87,7 +106,10 @@ impl SnapshotManager {
 
             let mut mgr = manager.lock().await;
             let _ = mgr.create_incremental(snapshot_bytes.as_ptr(), snapshot_bytes.len(), &dirty);
-            let _ = security::check_disk_space(std::path::Path::new(&mgr.config.dir), mgr.config.max_size_mb);
+            let _ = security::check_disk_space(
+                std::path::Path::new(&mgr.config.dir),
+                mgr.config.max_size_mb,
+            );
         }
     }
 }
@@ -109,7 +131,8 @@ mod tests {
         memory[0] = 0xAB;
         memory[4095] = 0xCD;
 
-        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[])
+            .unwrap();
 
         let mut restored = vec![0u8; 4096];
         mgr.restore(restored.as_mut_ptr(), restored.len()).unwrap();
@@ -127,13 +150,21 @@ mod tests {
         let mut mgr = SnapshotManager::new(&config);
 
         let memory = vec![0u8; 4096];
-        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
-        mgr.create_incremental(memory.as_ptr(), memory.len(), &[]).unwrap();
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[])
+            .unwrap();
+        mgr.create_incremental(memory.as_ptr(), memory.len(), &[])
+            .unwrap();
 
-        let blocks: Vec<_> = std::fs::read_dir(dir.path()).unwrap()
+        let blocks: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_name().to_string_lossy().starts_with("blk_"))
             .collect();
         assert_eq!(blocks.len(), 1);
     }
+}
+/// Проверка, является ли блок полностью нулевым.
+/// Если да — не сохраняем его, а помечаем в манифесте как "zero".
+fn is_zero_page(data: &[u8]) -> bool {
+    data.iter().all(|&b| b == 0)
 }

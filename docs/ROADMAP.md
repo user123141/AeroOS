@@ -43,3 +43,28 @@
 - Encrypted disk images
 - Guest agent for file operations
 - Time-travel debugging (replay from any snapshot)
+## Модуль 1: Безопасность и Изоляция (v2.0.0)
+
+- [x] User-mode Networking via `smoltcp` (в процессе)
+- [ ] AppContainer Sandbox via `rappct`
+
+## Модуль 2: Хранилище и Снапшоты (v2.0.0)
+
+- [x] Zero-page detection (inline dedup)
+- [ ] QCOW2 export (zero-copy)
+- [x] RAM-only mode (ephemeral VM)
+
+## Модуль 3: VirtIO Экосистема (v2.1.0)
+
+- [ ] AeroAgent (guest daemon)
+- [ ] VirtIO-9P / VirtIO-FS (shared folders)
+
+## Модуль 4: UI/UX Observability (v2.2.0)
+
+- [ ] WebRTC/VNC client
+- [ ] Time Travel timeline
+
+## Модуль 5: Инфраструктура (v3.0.0)
+
+- [ ] Aerofile (VM provisioning)
+- [ ] AeroRegistry (micro-images)

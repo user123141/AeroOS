@@ -1,22 +1,22 @@
-﻿#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 
+use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use anyhow::Result;
 
+mod boot;
 mod config;
+mod crypto;
+mod data_folder;
 mod hypervisor;
-mod virtio;
-mod snapshot;
-mod web;
 mod ipc;
 mod security;
-mod data_folder;
-mod crypto;
-mod boot;
-mod terminal;
+mod snapshot;
 mod tap;
+mod terminal;
+mod virtio;
+mod web;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,34 +28,45 @@ async fn main() -> Result<()> {
     let _ = security::verify_artifacts();
 
     let config = config::AeroConfig::load(&PathBuf::from("aeroos.config.toml"))?;
-    tracing::info!("Config: {} CPU, {} MB RAM", config.cpu.cores, config.memory.ram_mb);
+    tracing::info!(
+        "Config: {} CPU, {} MB RAM",
+        config.cpu.cores,
+        config.memory.ram_mb
+    );
 
     let df = match data_folder::DataFolder::new(&config) {
-        Ok(df) => { let _ = df.prepare(); df }
-        Err(e) => { tracing::warn!("data_folder: {}", e); return Ok(()); }
-    };
-
-    let vm_opt: Option<Arc<Mutex<hypervisor::VirtualMachine>>> = match hypervisor::VirtualMachine::new(&config, &df) {
-        Ok(vm) => {
-            tracing::info!("WHPX initialized");
-            Some(Arc::new(Mutex::new(vm)))
+        Ok(df) => {
+            let _ = df.prepare();
+            df
         }
         Err(e) => {
-            let msg = format!("{}", e);
-            if msg.contains("0xC0351000") || msg.contains("WHvCreatePartition") {
-                tracing::error!("=========================================================");
-                tracing::error!(" Гипервизор Windows НЕ запущен.");
-                tracing::error!(" Открой PowerShell от админа и выполни:");
-                tracing::error!("   bcdedit /set hypervisorlaunchtype auto");
-                tracing::error!(" Затем перезагрузи компьютер.");
-                tracing::error!(" UI и API будут работать без VM.");
-                tracing::error!("=========================================================");
-                None
-            } else {
-                return Err(e);
-            }
+            tracing::warn!("data_folder: {}", e);
+            return Ok(());
         }
     };
+
+    let vm_opt: Option<Arc<Mutex<hypervisor::VirtualMachine>>> =
+        match hypervisor::VirtualMachine::new(&config, &df) {
+            Ok(vm) => {
+                tracing::info!("WHPX initialized");
+                Some(Arc::new(Mutex::new(vm)))
+            }
+            Err(e) => {
+                let msg = format!("{}", e);
+                if msg.contains("0xC0351000") || msg.contains("WHvCreatePartition") {
+                    tracing::error!("=========================================================");
+                    tracing::error!(" Гипервизор Windows НЕ запущен.");
+                    tracing::error!(" Открой PowerShell от админа и выполни:");
+                    tracing::error!("   bcdedit /set hypervisorlaunchtype auto");
+                    tracing::error!(" Затем перезагрузи компьютер.");
+                    tracing::error!(" UI и API будут работать без VM.");
+                    tracing::error!("=========================================================");
+                    None
+                } else {
+                    return Err(e);
+                }
+            }
+        };
 
     let token = security::generate_session_token();
     tracing::info!("Session token: {}...", &token[..8]);

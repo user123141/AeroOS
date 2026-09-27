@@ -1,4 +1,4 @@
-﻿use anyhow::Result;
+use anyhow::Result;
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
@@ -43,13 +43,20 @@ async fn handle_request(
     token: Arc<String>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     let path = req.uri().path();
-    let path = if path == "/" { "index.html" } else { &path[1..] };
+    let path = if path == "/" {
+        "index.html"
+    } else {
+        &path[1..]
+    };
 
     if path == "api/token" {
         return Ok(Response::builder()
             .header("Content-Type", "application/json")
             .header("X-Content-Type-Options", "nosniff")
-            .body(Full::new(Bytes::from(format!("{{\"token\":\"{}\"}}", token))))
+            .body(Full::new(Bytes::from(format!(
+                "{{\"token\":\"{}\"}}",
+                token
+            ))))
             .unwrap());
     }
 

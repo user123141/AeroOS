@@ -1,4 +1,4 @@
-﻿//! AeroBoot — кастомный загрузчик AeroOS.
+//! AeroBoot — кастомный загрузчик AeroOS.
 //! Поддерживает BIOS-цепочку и UEFI-загрузчик (.efi), оба на Rust.
 
 extern crate std;
@@ -6,8 +6,8 @@ extern crate std;
 use anyhow::{Context, Result};
 use std::path::Path;
 
-pub const AERO_BOOT_MAGIC:   u32 = 0x4145524F; // "AERO"
-pub const AERO_BOOT_VERSION: u16 = 0x0110;     // 1.1.0
+pub const AERO_BOOT_MAGIC: u32 = 0x4145524F; // "AERO"
+pub const AERO_BOOT_VERSION: u16 = 0x0110; // 1.1.0
 
 #[repr(C, packed)]
 #[derive(Clone, Copy)]
@@ -32,10 +32,14 @@ impl AeroBoot {
     pub fn new() -> Self {
         Self {
             header: AeroBootHeader {
-                magic: AERO_BOOT_MAGIC, version: AERO_BOOT_VERSION,
+                magic: AERO_BOOT_MAGIC,
+                version: AERO_BOOT_VERSION,
                 entry_point: 0x100000,
-                kernel_size: 0, initramfs_size: 0, checksum: 0,
-                fb_width: 640, fb_height: 480,
+                kernel_size: 0,
+                initramfs_size: 0,
+                checksum: 0,
+                fb_width: 640,
+                fb_height: 480,
             },
             kernel_data: Vec::new(),
             initramfs_data: Vec::new(),
@@ -43,23 +47,27 @@ impl AeroBoot {
     }
 
     pub fn load_kernel(&mut self, path: &Path) -> Result<()> {
-        self.kernel_data = std::fs::read(path)
-            .with_context(|| format!("read kernel {}", path.display()))?;
+        self.kernel_data =
+            std::fs::read(path).with_context(|| format!("read kernel {}", path.display()))?;
         self.header.kernel_size = self.kernel_data.len() as u32;
         Ok(())
     }
 
     pub fn load_initramfs(&mut self, path: &Path) -> Result<()> {
-        self.initramfs_data = std::fs::read(path)
-            .with_context(|| format!("read initramfs {}", path.display()))?;
+        self.initramfs_data =
+            std::fs::read(path).with_context(|| format!("read initramfs {}", path.display()))?;
         self.header.initramfs_size = self.initramfs_data.len() as u32;
         Ok(())
     }
 
     pub fn compute_checksum(&mut self) {
         let mut s: u32 = 0;
-        for &b in &self.kernel_data   { s = s.wrapping_add(b as u32); }
-        for &b in &self.initramfs_data { s = s.wrapping_add(b as u32); }
+        for &b in &self.kernel_data {
+            s = s.wrapping_add(b as u32);
+        }
+        for &b in &self.initramfs_data {
+            s = s.wrapping_add(b as u32);
+        }
         self.header.checksum = s;
     }
 
@@ -108,7 +116,11 @@ impl AeroBoot {
         blob.extend_from_slice(&self.initramfs_data);
         std::fs::write(out_path, &blob)
             .with_context(|| format!("write efi {}", out_path.display()))?;
-        tracing::info!("UEFI image built: {} ({} bytes)", out_path.display(), blob.len());
+        tracing::info!(
+            "UEFI image built: {} ({} bytes)",
+            out_path.display(),
+            blob.len()
+        );
         Ok(())
     }
 }

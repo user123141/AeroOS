@@ -1,4 +1,4 @@
-﻿# AeroOS Configuration v0.10.0
+﻿# AeroOS Configuration v2.0.0
 
 [cpu]
 cores = 4
@@ -23,7 +23,7 @@ dir = "snapshots"
 dedup = true
 max_size_mb = 10240
 encrypt = false
+# Новое в v2.0: RAM-only режим (эфемерная ВМ)
+ram_only = false
 
-# embedded  -> kernel inside .exe
-# data_folder -> kernel in data/ next to .exe
 mode = "embedded"
