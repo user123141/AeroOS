@@ -1,70 +1,38 @@
-﻿# Roadmap
+﻿# AeroOS Roadmap
 
-## Current: v1.9.0 (2026-09)
+## Legend
+- ✅ Done
+- 🟡 In progress
+- ❌ Not started
 
-- [x] Single .exe
-- [x] WHPX integration
-- [x] VirtIO block / net / console / gpu
-- [x] ConPTY terminal
-- [x] Incremental encrypted snapshots
-- [x] Glassmorphism UI
-- [x] Clipboard sync
-- [x] wintun.dll auto-download
+## v3.0.0 — Singularity (current)
 
-## v2.0.0 — "Fusion" (2026-Q4)
+- ✅ Fix smoltcp 0.11 Device trait
+- ✅ Fix config.rs ram_only
+- ✅ Professional .gitignore
+- ✅ .cargo/config.toml (OOM protection)
+- 🟡 Real TCP proxy (host socket bridge)
+- 🟡 9P end-to-end
 
-- [ ] **Full Linux boot protocol** — launch Alpine/Debian kernels
-- [ ] **UEFI AeroBoot** — replace BIOS stub with real `.efi`
-- [ ] **VirtIO-FS** — shared folders host↔guest
-- [ ] **Multi-VM** — manage several VMs from one UI
-- [ ] **CLI `aeroctl`** — full command set (start/stop/snapshot/exec)
-- [ ] **Benchmarks** — cold start, RAM overhead, IOPS
+## v3.1.0 — Continuum (planned)
 
-## v2.1.0 — "Nebula" (2027-Q1)
+- ❌ Real TCP proxy via smoltcp
+- ❌ 9P read/write end-to-end
+- ❌ WebRTC/VNC canvas streaming
+- ❌ `aeroctl up` boots VM from Aerofile
+- ❌ AeroRegistry online
 
-- [ ] **User-mode NAT** — networking without admin rights
-- [ ] **gfxstream / VirGL** — 3D acceleration via WebGPU
-- [ ] **Dynamic resolution** — auto-resize guest display
-- [ ] **Themes** — light/dark, custom accent colors
-- [ ] **Real-time charts** — CPU/RAM/disk/network
+## v3.2.0 — Horizon
 
-## v3.0.0 — "Horizon" (2027-Q2)
-
-- [ ] **OCI compatibility** — run Docker images as microVMs
-- [ ] **Linux host support** — KVM backend
-- [ ] **macOS host** — HVF backend
-- [ ] **ARM64** — Windows on ARM
+- ❌ Multi-VM UI (tabs + per-VM stats)
+- ❌ Live migration
+- ❌ GPU passthrough (VirGL)
+- ❌ OCI compatibility
 
 ## Backlog
 
-- VM snapshot diff viewer
-- Performance profiler (guest ↔ host)
-- Plugin system for UI extensions
+- Time-travel diff viewer
+- Snapshot export to QCOW2
+- Guest agent file sync
+- Plugin system for UI
 - Encrypted disk images
-- Guest agent for file operations
-- Time-travel debugging (replay from any snapshot)
-## Модуль 1: Безопасность и Изоляция (v2.0.0)
-
-- [x] User-mode Networking via `smoltcp` (в процессе)
-- [ ] AppContainer Sandbox via `rappct`
-
-## Модуль 2: Хранилище и Снапшоты (v2.0.0)
-
-- [x] Zero-page detection (inline dedup)
-- [ ] QCOW2 export (zero-copy)
-- [x] RAM-only mode (ephemeral VM)
-
-## Модуль 3: VirtIO Экосистема (v2.1.0)
-
-- [ ] AeroAgent (guest daemon)
-- [ ] VirtIO-9P / VirtIO-FS (shared folders)
-
-## Модуль 4: UI/UX Observability (v2.2.0)
-
-- [ ] WebRTC/VNC client
-- [ ] Time Travel timeline
-
-## Модуль 5: Инфраструктура (v3.0.0)
-
-- [ ] Aerofile (VM provisioning)
-- [ ] AeroRegistry (micro-images)

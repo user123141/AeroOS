@@ -1,14 +1,12 @@
 ﻿[package]
 name = "aeroos"
-version = "2.2.0"
+version = "3.0.0"
 edition = "2021"
 authors = ["AeroOS Contributors"]
 description = "AeroOS — Portable OS for Windows in a single executable"
 license = "MIT"
 repository = "https://github.com/user123141/AeroOS"
 readme = "README.md"
-keywords = ["virtualization", "hypervisor", "whpx", "vm", "operating-system"]
-categories = ["virtualization", "os"]
 rust-version = "1.75"
 default-run = "aeroos"
 
@@ -20,35 +18,29 @@ path = "src/main.rs"
 name = "aeroctl"
 path = "src/bin/aeroctl.rs"
 
+[[bin]]
+name = "gen-license"
+path = "src/bin/gen-license.rs"
+
 [[bench]]
 name = "snapshot"
 harness = false
 
 [dependencies]
-# Local
 whpx   = { path = "vendor/whpx" }
 conpty = { path = "vendor/conpty" }
 
-# Runtime
-tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "io-util", "io-std"] }
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "io-util", "io-std", "fs"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 tokio-tungstenite = "0.24"
-
-# HTTP server
 hyper = { version = "1.0", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 http-body-util = "0.1"
-
-# CLI
 clap = { version = "4.5", features = ["derive", "color"] }
 colored = "2.1"
-
-# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
-
-# Compression & crypto
 lz4_flex = { version = "0.11", default-features = false, features = ["safe-encode", "safe-decode"] }
 blake3 = { version = "1.5", features = ["mmap", "rayon"] }
 aes-gcm = "0.10"
@@ -57,37 +49,24 @@ rand = "0.8"
 sha2 = "0.10"
 hex = "0.4"
 base64 = "0.22"
-
-# Web assets
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 rust-embed = { version = "8.5", features = ["include-exclude"] }
 mime_guess = "2.0"
-
-# Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "std"] }
-
-# Errors
 anyhow = "1.0"
 thiserror = "2.0"
-
-# Host integration
 arboard = "3.4"
+ureq = { version = "2.10", features = ["json", "tls"] }
 
-# Networking
 smoltcp = { version = "0.11", default-features = false, features = [
-    "std", "medium-ip", "medium-ethernet",
-    "proto-ipv4", "proto-icmp",
-    "socket-tcp", "socket-udp", "socket-icmp", "socket-dhcpv4"
+    "std", "medium-ethernet", "medium-ip", "proto-ipv4", "proto-igmp",
+    "proto-dhcpv4", "socket-tcp", "socket-udp", "socket-icmp", "socket-dhcpv4",
 ] }
 socket2 = { version = "0.5", features = ["all"] }
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = [
-    "libloaderapi", "errhandlingapi", "memoryapi",
-    "consoleapi", "handleapi", "namedpipeapi",
-    "processenv", "winbase", "wincon", "winnt", "fileapi",
-    "minwindef", "winuser", "std"
-] }
+winapi = { version = "0.3", features = ["libloaderapi", "errhandlingapi", "memoryapi", "consoleapi", "handleapi", "namedpipeapi", "processenv", "winbase", "wincon", "winnt", "fileapi", "minwindef", "winuser", "std", "securitybaseapi", "processthreadsapi", "winerror"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -97,6 +76,7 @@ tempfile = "3.13"
 default = []
 ape = ["dep:cosmo-build"]
 encryption = []
+sandbox = []
 
 [build-dependencies]
 cosmo-build = { version = "5", optional = true }
@@ -105,9 +85,9 @@ cosmo-build = { version = "5", optional = true }
 cosmo-compat = { version = "5", optional = true }
 
 [profile.release]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
+opt-level = 2
+lto = "thin"
+codegen-units = 16
 strip = "symbols"
 panic = "abort"
 incremental = false

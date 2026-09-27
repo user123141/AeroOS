@@ -31,8 +31,6 @@ pub struct GpuConfig {
     pub model: String,
     #[serde(default)]
     pub accel_3d: bool,
-    #[serde(default)]
-    pub passthrough: bool,
 }
 fn d_gpu() -> String {
     "virtio-gpu".into()
@@ -110,7 +108,6 @@ impl AeroConfig {
                 gpu: GpuConfig {
                     model: "virtio-gpu".into(),
                     accel_3d: true,
-                    passthrough: false,
                 },
                 disk: DiskConfig {
                     image_path: None,
@@ -123,6 +120,7 @@ impl AeroConfig {
                     dedup: true,
                     max_size_mb: 10240,
                     encrypt: false,
+                    ram_only: false,
                 },
                 mode: "embedded".into(),
             };

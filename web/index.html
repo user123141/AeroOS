@@ -9,7 +9,6 @@
 </head>
 <body>
 <div class="desktop">
-  <!-- AeroDock -->
   <div class="glass-panel dock">
     <div class="dock-item" data-app="dashboard" title="Dashboard"></div>
     <div class="dock-item" data-app="terminal" title="AeroTerm"></div>
@@ -17,7 +16,6 @@
     <div class="dock-item" data-app="settings" title="Settings"></div>
   </div>
 
-  <!-- Dashboard -->
   <div class="glass-panel window" id="window-dashboard">
     <div class="window-header">
       <span class="window-title">AeroOS Dashboard</span>
@@ -27,29 +25,18 @@
       </div>
     </div>
     <div class="window-content">
-      <div class="hero">
-        <h1>AeroOS</h1>
-        <p class="subtitle">Portable OS · v2.2.0 Horizon</p>
-      </div>
-
+      <div class="vm-tabs" id="vm-tabs"></div>
+      <div class="hero"><h1>AeroOS</h1><p class="subtitle">Portable OS · v2.9.0 Vertex</p></div>
       <div class="cards">
         <div class="card"><div class="card-label">CPU</div><div class="card-value" id="cpu-cores">—</div></div>
         <div class="card"><div class="card-label">RAM</div><div class="card-value" id="ram-size">—</div></div>
         <div class="card"><div class="card-label">GPU</div><div class="card-value" id="gpu-model">—</div></div>
         <div class="card"><div class="card-label">VM</div><div class="card-value" id="vm-status">—</div></div>
       </div>
-
       <div class="charts">
-        <div class="chart-block">
-          <div class="chart-title">CPU</div>
-          <canvas id="chart-cpu" width="560" height="120"></canvas>
-        </div>
-        <div class="chart-block">
-          <div class="chart-title">Memory activity</div>
-          <canvas id="chart-mem" width="560" height="120"></canvas>
-        </div>
+        <div class="chart-block"><div class="chart-title">CPU</div><canvas id="chart-cpu" width="560" height="120"></canvas></div>
+        <div class="chart-block"><div class="chart-title">Memory</div><canvas id="chart-mem" width="560" height="120"></canvas></div>
       </div>
-
       <div class="stats-row">
         <div class="stat"><span class="stat-label">Snapshots</span><span class="stat-value" id="snap-count">0</span></div>
         <div class="stat"><span class="stat-label">Dirty pages</span><span class="stat-value" id="dirty-pages">0</span></div>
@@ -57,63 +44,37 @@
     </div>
   </div>
 
-  <!-- Terminal -->
   <div class="glass-panel window hidden" id="window-terminal">
-    <div class="window-header">
-      <span class="window-title">AeroTerm</span>
-      <div class="window-controls">
-        <button class="close-terminal"></button><button class="minimize"></button><button class="maximize"></button>
-      </div>
+    <div class="window-header"><span class="window-title">AeroTerm</span>
+      <div class="window-controls"><button class="close-terminal"></button><button class="minimize"></button><button class="maximize"></button></div>
     </div>
-    <div class="window-content terminal-content">
-      <div id="xterm-container"></div>
-    </div>
+    <div class="window-content terminal-content"><div id="xterm-container"></div></div>
   </div>
 
-  <!-- Time Travel -->
   <div class="glass-panel window hidden" id="window-timeline">
-    <div class="window-header">
-      <span class="window-title">Time Travel</span>
-      <div class="window-controls">
-        <button class="close-timeline"></button><button class="minimize"></button><button class="maximize"></button>
-      </div>
+    <div class="window-header"><span class="window-title">Time Travel</span>
+      <div class="window-controls"><button class="close-timeline"></button><button class="minimize"></button><button class="maximize"></button></div>
     </div>
     <div class="window-content">
       <h3>Snapshot timeline</h3>
       <p class="timeline-help">Move the slider to restore any previous state instantly.</p>
       <input type="range" id="timeline-slider" min="0" max="0" value="0">
-      <div class="timeline-labels">
-        <span id="timeline-first">—</span>
-        <span id="timeline-selected">now</span>
-        <span id="timeline-last">—</span>
-      </div>
+      <div class="timeline-labels"><span id="timeline-first">—</span><span id="timeline-selected">now</span><span id="timeline-last">—</span></div>
       <button id="timeline-restore" class="primary-btn">Restore</button>
     </div>
   </div>
 
-  <!-- Settings -->
   <div class="glass-panel window hidden" id="window-settings">
-    <div class="window-header">
-      <span class="window-title">Settings</span>
-      <div class="window-controls">
-        <button class="close-settings"></button><button class="minimize"></button><button class="maximize"></button>
-      </div>
+    <div class="window-header"><span class="window-title">Settings</span>
+      <div class="window-controls"><button class="close-settings"></button><button class="minimize"></button><button class="maximize"></button></div>
     </div>
     <div class="window-content">
       <h3>AeroOS Settings</h3>
       <div class="setting-row"><label>Theme</label>
-        <select id="theme-select">
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-          <option value="aero">Aero (glass)</option>
-        </select>
+        <select id="theme-select"><option value="dark">Dark</option><option value="light">Light</option><option value="aero">Aero</option></select>
       </div>
-      <div class="setting-row"><label>Blur intensity</label>
-        <input type="range" id="blur-slider" min="0" max="40" value="20">
-      </div>
-      <div class="setting-row"><label>Accent color</label>
-        <input type="color" id="accent-picker" value="#4a9eff">
-      </div>
+      <div class="setting-row"><label>Blur intensity</label><input type="range" id="blur-slider" min="0" max="40" value="20"></div>
+      <div class="setting-row"><label>Accent color</label><input type="color" id="accent-picker" value="#4a9eff"></div>
     </div>
   </div>
 </div>
@@ -122,5 +83,6 @@
 <script src="js/charts.js"></script>
 <script src="js/timeline.js"></script>
 <script src="js/theme.js"></script>
+<script src="js/vm-tabs.js"></script>
 </body>
 </html>

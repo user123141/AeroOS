@@ -1,17 +1,13 @@
-//! User-mode networking via smoltcp.
+//! User-mode networking via smoltcp 0.11.
 //!
-//! Зачем: полноценный TCP/IP стек в user-space позволяет дать гостю интернет
-//! БЕЗ прав администратора и БЕЗ создания TAP/Wintun-адаптера.
-//!
-//! Как работает:
-//!   1. VirtIO-net передаёт Ethernet-фрейм от гостя
-//!   2. Мы парсим его smoltcp-стеком
-//!   3. TCP/UDP-соединения проксируются в host sockets (через socket2)
-//!   4. Ответные пакеты возвращаются в гостя через VirtIO-net RX
+//! API smoltcp 0.11:
+//!   - `Device::receive(&mut self, Instant)`
+//!   - `type RxToken<'a>`, `type TxToken<'a>`
+//!   - `Device` без лайфтайма, лайфтайм только у ассоциированных типов
 
 use anyhow::{Context, Result};
 use smoltcp::iface::{Config as IfaceConfig, Interface, SocketHandle, SocketSet};
-use smoltcp::phy::{Device, DeviceCapabilities, Medium, RxToken, TxToken};
+use smoltcp::phy::{self, Device, DeviceCapabilities, Medium, RxToken, TxToken};
 use smoltcp::socket::{tcp, udp};
 use smoltcp::time::Instant;
 use smoltcp::wire::{EthernetAddress, HardwareAddress, IpAddress, IpCidr, Ipv4Address};
@@ -22,7 +18,6 @@ pub const MTU: usize = 1500;
 pub const GUEST_IP: Ipv4Address = Ipv4Address::new(10, 0, 2, 15);
 pub const GATEWAY_IP: Ipv4Address = Ipv4Address::new(10, 0, 2, 2);
 
-/// Очередь пакетов между VirtIO-net и smoltcp.
 #[derive(Clone)]
 pub struct PacketQueue {
     inner: Arc<Mutex<VecDeque<Vec<u8>>>>,
@@ -34,23 +29,24 @@ impl PacketQueue {
             inner: Arc::new(Mutex::new(VecDeque::with_capacity(256))),
         }
     }
-
     pub fn push(&self, pkt: Vec<u8>) {
         let mut q = self.inner.lock().unwrap();
         if q.len() < 1024 {
             q.push_back(pkt);
         }
     }
-
     pub fn pop(&self) -> Option<Vec<u8>> {
         self.inner.lock().unwrap().pop_front()
     }
+    pub fn len(&self) -> usize {
+        self.inner.lock().unwrap().len()
+    }
 }
 
-/// Виртуальное устройство для smoltcp — мост между VirtIO-net и стеком.
+/// Виртуальное устройство для smoltcp.
 pub struct VirtioNetDevice {
-    rx: PacketQueue, // host → smoltcp (пакеты от гостя)
-    tx: PacketQueue, // smoltcp → host (пакеты в гостя)
+    rx: PacketQueue,
+    tx: PacketQueue,
 }
 
 impl VirtioNetDevice {
@@ -59,11 +55,11 @@ impl VirtioNetDevice {
     }
 }
 
-impl<'a> Device<'a> for VirtioNetDevice {
-    type RxToken = VirtioRxToken;
-    type TxToken = VirtioTxToken;
+impl Device for VirtioNetDevice {
+    type RxToken<'a> = VirtioRxToken;
+    type TxToken<'a> = VirtioTxToken;
 
-    fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
+    fn receive(&mut self, _timestamp: Instant) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
         let rx_pkt = self.rx.pop()?;
         Some((
             VirtioRxToken { buffer: rx_pkt },
@@ -73,7 +69,7 @@ impl<'a> Device<'a> for VirtioNetDevice {
         ))
     }
 
-    fn transmit(&'a mut self) -> Option<Self::TxToken> {
+    fn transmit(&mut self, _timestamp: Instant) -> Option<Self::TxToken<'_>> {
         Some(VirtioTxToken {
             queue: self.tx.clone(),
         })
@@ -115,7 +111,6 @@ impl TxToken for VirtioTxToken {
     }
 }
 
-/// Backend user-mode networking.
 pub struct SmoltcpBackend {
     rx: PacketQueue,
     tx: PacketQueue,
@@ -126,7 +121,7 @@ pub struct SmoltcpBackend {
 
 impl SmoltcpBackend {
     pub fn new() -> Result<Self> {
-        tracing::info!("smoltcp backend initialized (user-mode, no admin required)");
+        tracing::info!("smoltcp backend initialized (user-mode)");
         Ok(Self {
             rx: PacketQueue::new(),
             tx: PacketQueue::new(),
@@ -135,34 +130,35 @@ impl SmoltcpBackend {
             handles: Vec::new(),
         })
     }
-
-    /// Очередь "host → smoltcp" (пакеты от гостя).
     pub fn rx(&self) -> PacketQueue {
         self.rx.clone()
     }
-    /// Очередь "smoltcp → host" (пакеты в гостя).
     pub fn tx(&self) -> PacketQueue {
         self.tx.clone()
     }
 
-    /// Инициализация интерфейса и базовых сокетов (DNS + пример TCP listener).
     pub fn init_iface(&mut self) -> Result<()> {
         let mut device = VirtioNetDevice::new(self.rx.clone(), self.tx.clone());
-        let config = IfaceConfig::new(HardwareAddress::Ethernet(
-            EthernetAddress([0x02, 0x41, 0x45, 0x52, 0x4F, 0x01]), // 02:41:45:52:4F:01
-        ));
+        let config = IfaceConfig::new(HardwareAddress::Ethernet(EthernetAddress([
+            0x02, 0x41, 0x45, 0x52, 0x4F, 0x01,
+        ])));
         let mut iface = Interface::new(config, &mut device, Instant::now());
         iface.update_ip_addrs(|addrs| {
             let _ = addrs.push(IpCidr::new(IpAddress::Ipv4(GUEST_IP), 24));
         });
         iface.routes_mut().add_default_ipv4_route(GATEWAY_IP).ok();
 
-        // UDP socket для DNS-proxy (порт 53)
         let dns_rx = udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 16], vec![0u8; 4096]);
         let dns_tx = udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 16], vec![0u8; 4096]);
         let dns_socket = udp::Socket::new(dns_rx, dns_tx);
         let dns_handle = self.sockets.add(dns_socket);
         self.handles.push(dns_handle);
+
+        let tcp_rx = tcp::SocketBuffer::new(vec![0u8; 4096]);
+        let tcp_tx = tcp::SocketBuffer::new(vec![0u8; 4096]);
+        let tcp_socket = tcp::Socket::new(tcp_rx, tcp_tx);
+        let tcp_handle = self.sockets.add(tcp_socket);
+        self.handles.push(tcp_handle);
 
         self.iface = Some(iface);
         tracing::info!(
@@ -173,17 +169,12 @@ impl SmoltcpBackend {
         Ok(())
     }
 
-    /// Основной цикл обработки пакетов.
-    /// Вызывается из tokio-таска и работает до остановки VM.
     pub async fn run(&mut self) -> Result<()> {
         self.init_iface().context("smoltcp init")?;
         let mut device = VirtioNetDevice::new(self.rx.clone(), self.tx.clone());
-
         loop {
-            // Проверяем очереди и продвигаем стек.
             if let Some(iface) = self.iface.as_mut() {
-                let now = Instant::now();
-                iface.poll(now, &mut device, &mut self.sockets);
+                iface.poll(Instant::now(), &mut device, &mut self.sockets);
             }
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         }
@@ -191,8 +182,8 @@ impl SmoltcpBackend {
 
     pub fn stats(&self) -> NetStats {
         NetStats {
-            rx_packets: self.rx.inner.lock().unwrap().len() as u64,
-            tx_packets: self.tx.inner.lock().unwrap().len() as u64,
+            rx_packets: self.rx.len() as u64,
+            tx_packets: self.tx.len() as u64,
         }
     }
 }

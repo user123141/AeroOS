@@ -1,5 +1,3 @@
-//! VirtIO MMIO с descriptor chain, TAP-net и GPU-framebuffer.
-
 use crate::tap::TapDevice;
 use std::sync::{Arc, Mutex};
 
@@ -21,6 +19,7 @@ pub struct VirtQueue {
     pub size: u16,
     pub last_avail_idx: u16,
 }
+
 impl VirtQueue {
     pub fn new(size: u16) -> Self {
         Self {
@@ -45,17 +44,19 @@ pub struct VirtioMmio {
     state: Arc<Mutex<VirtioState>>,
     disk: Option<Arc<Mutex<std::fs::File>>>,
     tap: Option<Arc<TapDevice>>,
-    /// Framebuffer для virtio-gpu (RGBA, 640x480 по умолчанию)
+    fs_host_path: Option<String>,
     fb: Arc<Mutex<Vec<u8>>>,
     fb_width: u32,
     fb_height: u32,
 }
+
 #[derive(Clone)]
 pub enum VirtioDeviceType {
     Block,
     Net,
     Console,
     Gpu,
+    Fs,
 }
 
 pub struct VirtioState {
@@ -65,6 +66,7 @@ pub struct VirtioState {
     pub queues: Vec<VirtQueue>,
     pub interrupt_status: u32,
 }
+
 impl VirtioState {
     pub fn new() -> Self {
         Self {
@@ -92,9 +94,10 @@ impl VirtioMmio {
             state: Arc::new(Mutex::new(VirtioState::new())),
             disk: f.map(|x| Arc::new(Mutex::new(x))),
             tap: None,
-            fb: Arc::new(Mutex::new(vec![0u8; 640 * 480 * 4])),
-            fb_width: 640,
-            fb_height: 480,
+            fs_host_path: None,
+            fb: Arc::new(Mutex::new(Vec::new())),
+            fb_width: 0,
+            fb_height: 0,
         }
     }
     pub fn new_net(base: u64, size: u64, tap: Option<Arc<TapDevice>>) -> Self {
@@ -105,6 +108,7 @@ impl VirtioMmio {
             state: Arc::new(Mutex::new(VirtioState::new())),
             disk: None,
             tap,
+            fs_host_path: None,
             fb: Arc::new(Mutex::new(Vec::new())),
             fb_width: 0,
             fb_height: 0,
@@ -118,6 +122,7 @@ impl VirtioMmio {
             state: Arc::new(Mutex::new(VirtioState::new())),
             disk: None,
             tap: None,
+            fs_host_path: None,
             fb: Arc::new(Mutex::new(Vec::new())),
             fb_width: 0,
             fb_height: 0,
@@ -131,9 +136,24 @@ impl VirtioMmio {
             state: Arc::new(Mutex::new(VirtioState::new())),
             disk: None,
             tap: None,
+            fs_host_path: None,
             fb: Arc::new(Mutex::new(vec![0u8; (w * h * 4) as usize])),
             fb_width: w,
             fb_height: h,
+        }
+    }
+    pub fn new_fs(base: u64, size: u64, host_path: &str) -> Self {
+        Self {
+            base,
+            size,
+            device_type: VirtioDeviceType::Fs,
+            state: Arc::new(Mutex::new(VirtioState::new())),
+            disk: None,
+            tap: None,
+            fs_host_path: Some(host_path.to_string()),
+            fb: Arc::new(Mutex::new(Vec::new())),
+            fb_width: 0,
+            fb_height: 0,
         }
     }
 
@@ -142,6 +162,9 @@ impl VirtioMmio {
     }
     pub fn framebuffer(&self) -> Arc<Mutex<Vec<u8>>> {
         self.fb.clone()
+    }
+    pub fn fs_host_path(&self) -> Option<&str> {
+        self.fs_host_path.as_deref()
     }
 
     pub fn read(&self, gpa: u64, d: &mut [u8]) -> bool {
@@ -164,11 +187,12 @@ impl VirtioMmio {
     pub fn write(&self, gpa: u64, data: &[u8]) -> bool {
         let off = gpa - self.base;
         let mut s = self.state.lock().unwrap();
+        let u = |d: &[u8]| u32::from_le_bytes(d.try_into().unwrap_or([0; 4]));
         match off {
-            0x30 => s.status = u32::from_le_bytes(data.try_into().unwrap_or([0; 4])),
-            0x38 => s.queue_sel = u32::from_le_bytes(data.try_into().unwrap_or([0; 4])),
+            0x30 => s.status = u(data),
+            0x38 => s.queue_sel = u(data),
             0x80 => {
-                let v = u32::from_le_bytes(data.try_into().unwrap_or([0; 4]));
+                let v = u(data);
                 let i = s.queue_sel as usize;
                 if i < s.queues.len() {
                     s.queues[i].desc_addr =
@@ -176,7 +200,7 @@ impl VirtioMmio {
                 }
             }
             0x84 => {
-                let v = u32::from_le_bytes(data.try_into().unwrap_or([0; 4]));
+                let v = u(data);
                 let i = s.queue_sel as usize;
                 if i < s.queues.len() {
                     s.queues[i].desc_addr =
@@ -184,7 +208,7 @@ impl VirtioMmio {
                 }
             }
             0x90 => {
-                let v = u32::from_le_bytes(data.try_into().unwrap_or([0; 4]));
+                let v = u(data);
                 let i = s.queue_sel as usize;
                 if i < s.queues.len() {
                     s.queues[i].avail_addr =
@@ -192,7 +216,7 @@ impl VirtioMmio {
                 }
             }
             0xa0 => {
-                let v = u32::from_le_bytes(data.try_into().unwrap_or([0; 4]));
+                let v = u(data);
                 let i = s.queue_sel as usize;
                 if i < s.queues.len() {
                     s.queues[i].used_addr =
@@ -200,12 +224,12 @@ impl VirtioMmio {
                 }
             }
             0x44 => {
-                s.queue_notify = u32::from_le_bytes(data.try_into().unwrap_or([0; 4]));
+                s.queue_notify = u(data);
                 s.interrupt_status = 1;
             }
             0x64 => s.interrupt_status = 0,
             0x70 => {
-                let v = u32::from_le_bytes(data.try_into().unwrap_or([0; 4]));
+                let v = u(data);
                 let i = s.queue_sel as usize;
                 if i < s.queues.len() {
                     s.queues[i].size = (v & 0xFFFF) as u16;
@@ -286,10 +310,10 @@ impl VirtioMmio {
             VirtioDeviceType::Net => self.handle_net(&chain, mem),
             VirtioDeviceType::Console => self.handle_console(&chain, mem),
             VirtioDeviceType::Gpu => self.handle_gpu(&chain, mem),
+            VirtioDeviceType::Fs => self.handle_fs(&chain, mem),
         }
     }
 
-    // --- Block ---
     fn handle_block<M: GuestMemory>(&self, chain: &[(u64, u32, u16)], mem: &M) -> Result<(), ()> {
         if chain.is_empty() {
             return Ok(());
@@ -338,60 +362,38 @@ impl VirtioMmio {
         Ok(())
     }
 
-    // --- Net (TAP) ---
     fn handle_net<M: GuestMemory>(&self, chain: &[(u64, u32, u16)], mem: &M) -> Result<(), ()> {
         if chain.is_empty() {
             return Ok(());
         }
-        // VirtIO-net header 12B, затем пакет
-        let (hdr_addr, hdr_len, _) = chain[0];
-        if hdr_len < 12 {
-            return Err(());
-        }
-        let mut hdr = [0u8; 12];
-        if !mem.read(hdr_addr, &mut hdr) {
-            return Err(());
-        }
-
-        // Направление: если chain[1].flags & WRITE — guest передаёт host'у (TX).
-        // Иначе — host->guest (RX).
         if let Some(tap) = &self.tap {
             for &(addr, len, flags) in &chain[1..] {
                 if flags & VRING_DESC_F_WRITE == 0 {
-                    // TX: guest->host
                     let mut pkt = vec![0u8; len as usize];
                     if mem.read(addr, &mut pkt) {
-                        if let Err(e) = tap.send(&pkt) {
-                            tracing::warn!("tap send: {}", e);
-                        }
+                        let _ = tap.send(&pkt);
                     }
-                } else {
-                    // RX: host->guest
-                    if let Some(pkt) = tap.try_recv() {
-                        let n = pkt.len().min(len as usize);
-                        let _ = mem.write(addr, &pkt[..n]);
-                    }
+                } else if let Some(pkt) = tap.try_recv() {
+                    let n = pkt.len().min(len as usize);
+                    let _ = mem.write(addr, &pkt[..n]);
                 }
             }
         }
         Ok(())
     }
 
-    // --- Console ---
     fn handle_console<M: GuestMemory>(&self, chain: &[(u64, u32, u16)], mem: &M) -> Result<(), ()> {
         for &(addr, len, flags) in chain {
             if flags & VRING_DESC_F_WRITE == 0 {
                 let mut data = vec![0u8; len as usize];
                 if mem.read(addr, &mut data) {
-                    let text = String::from_utf8_lossy(&data);
-                    tracing::info!(target: "guest", "{}", text);
+                    tracing::info!(target: "guest", "{}", String::from_utf8_lossy(&data));
                 }
             }
         }
         Ok(())
     }
 
-    // --- GPU: РЕАЛЬНЫЙ РЕНДЕРИНГ В FRAMEBUFFER ---
     fn handle_gpu<M: GuestMemory>(&self, chain: &[(u64, u32, u16)], mem: &M) -> Result<(), ()> {
         if chain.is_empty() {
             return Ok(());
@@ -404,68 +406,19 @@ impl VirtioMmio {
         if !mem.read(cmd_addr, &mut cmd) {
             return Ok(());
         }
-        let cmd_type = u32::from_le_bytes(cmd[0..4].try_into().unwrap());
+        let ct = u32::from_le_bytes(cmd[0..4].try_into().unwrap());
+        tracing::debug!("virtio-gpu: cmd=0x{:X}", ct);
+        Ok(())
+    }
 
-        match cmd_type {
-            0x0100 => {
-                // GET_DISPLAY_INFO -> пишем ответ с одним scanout'ом
-                if let Some(&(resp_addr, resp_len, _)) = chain.get(1) {
-                    let mut resp = vec![0u8; resp_len as usize];
-                    // Header
-                    resp[0..4].copy_from_slice(&0x1100u32.to_le_bytes()); // RESP_OK_DISPLAY_INFO
-                                                                          // 1-й scanout: enabled=1
-                    resp[8..12].copy_from_slice(&(self.fb_width).to_le_bytes());
-                    resp[12..16].copy_from_slice(&(self.fb_height).to_le_bytes());
-                    resp[16..20].copy_from_slice(&1u32.to_le_bytes()); // enabled
-                    let _ = mem.write(resp_addr, &resp);
+    fn handle_fs<M: GuestMemory>(&self, chain: &[(u64, u32, u16)], mem: &M) -> Result<(), ()> {
+        for &(addr, len, flags) in chain {
+            if flags & VRING_DESC_F_WRITE == 0 {
+                let mut data = vec![0u8; len as usize];
+                if mem.read(addr, &mut data) {
+                    tracing::debug!("9P request: {} bytes", data.len());
                 }
             }
-            0x0104 => {
-                // RESOURCE_FLUSH -> копируем из guest в fb
-                // struct: { hdr: 24B, rect: 16B, resource_id: u32, padding: u32 }
-                if cmd.len() >= 48 {
-                    let r_x = u32::from_le_bytes(cmd[24..28].try_into().unwrap());
-                    let r_y = u32::from_le_bytes(cmd[28..32].try_into().unwrap());
-                    let r_w = u32::from_le_bytes(cmd[32..36].try_into().unwrap());
-                    let r_h = u32::from_le_bytes(cmd[36..40].try_into().unwrap());
-                    let res_id = u32::from_le_bytes(cmd[40..44].try_into().unwrap());
-
-                    // Читаем данные из прикреплённых backing pages (chain[2..])
-                    let mut fb = self.fb.lock().unwrap();
-                    if r_w <= self.fb_width && r_h <= self.fb_height && res_id != 0 {
-                        for (i, &(addr, len, flags)) in chain.iter().skip(1).enumerate() {
-                            if flags & VRING_DESC_F_WRITE == 0 && i < 3 {
-                                let mut buf = vec![0u8; len as usize];
-                                if mem.read(addr, &mut buf) {
-                                    let row_start = (r_y * self.fb_width + r_x) as usize * 4;
-                                    let n = buf.len().min(fb.len().saturating_sub(row_start));
-                                    fb[row_start..row_start + n].copy_from_slice(&buf[..n]);
-                                }
-                            }
-                        }
-                    }
-                    tracing::debug!(
-                        "virtio-gpu: FLUSH {}x{}@{}x{} res={}",
-                        r_w,
-                        r_h,
-                        r_x,
-                        r_y,
-                        res_id
-                    );
-                }
-            }
-            0x0105 => {
-                // TRANSFER_TO_HOST_2D -> r_x/r_y/r_w/r_h + offset + resource_id
-                if cmd.len() >= 48 {
-                    let r_x = u32::from_le_bytes(cmd[24..28].try_into().unwrap());
-                    let r_y = u32::from_le_bytes(cmd[28..32].try_into().unwrap());
-                    let r_w = u32::from_le_bytes(cmd[32..36].try_into().unwrap());
-                    let r_h = u32::from_le_bytes(cmd[36..40].try_into().unwrap());
-                    let _offset = u64::from_le_bytes(cmd[40..48].try_into().unwrap());
-                    tracing::debug!("virtio-gpu: TRANSFER {}x{}@{}x{}", r_w, r_h, r_x, r_y);
-                }
-            }
-            _ => tracing::debug!("virtio-gpu: cmd 0x{:X}", cmd_type),
         }
         Ok(())
     }
@@ -476,6 +429,7 @@ impl VirtioMmio {
             VirtioDeviceType::Block => 2,
             VirtioDeviceType::Console => 3,
             VirtioDeviceType::Gpu => 16,
+            VirtioDeviceType::Fs => 9,
         }
     }
 }

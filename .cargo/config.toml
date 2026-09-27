@@ -1,0 +1,7 @@
+﻿# Ограничение параллелизма сборки — защита от LNK1102 (out of memory).
+# Без этого на 8–16 ГБ RAM линковка может падать.
+[build]
+jobs = 4
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/LARGEADDRESSAWARE:NO"]

@@ -1,27 +1,72 @@
-﻿# Rust
-/target/
-**/*.rs.bk
+﻿# ============================================================
+# AeroOS .gitignore
+# Категоризировано: Cargo → Rust dev → локальное → IDE → OS → CI
+# ============================================================
 
-# Build outputs
+# --- Cargo & Build Artifacts ---
+**/target/
 /build/
 /kernel/output/
 /kernel/buildroot/
 /kernel/external/
-
-# Runtime
-/data/
-/snapshots/
-*.log
+Cargo.lock.orig
+rustc-ice-*.txt
 *.pdb
 *.ilk
 
-# IDE
+# --- Rust Development ---
+**/*.rs.bk
+**/mutants.out*/
+*.profraw
+*.profdata
+
+# --- Local Environment (never commit secrets) ---
+.env
+.env.*
+!.env.example
+!.env.sample
+.aeroos/
+/snapshots/
+/data/
+
+# --- Licenses & Keys ---
+*.key
+*.license
+!license.example.json
+
+# --- Logs & Debug ---
+*.log
+docs/LAST_ERROR.txt
+target/debug/**
+/tmp/
+
+# --- IDE / Editors ---
 .vs/
 .vscode/
 .idea/
 *.swp
+*.swo
 *~
+.clwb
+rust-project.json
+.vscode/settings.json
 
-# OS
+# --- OS Files ---
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+__MACOSX/
+
+# Linux
+.directory
+.Trash-*
