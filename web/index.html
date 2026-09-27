@@ -1,52 +1,63 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws://127.0.0.1:8081">
 <title>AeroOS</title>
 <link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
 </head>
 <body>
 <div class="desktop">
   <!-- AeroDock -->
   <div class="glass-panel dock">
+    <div class="dock-item" data-app="dashboard" title="Dashboard"></div>
     <div class="dock-item" data-app="terminal" title="AeroTerm"></div>
-    <div class="dock-item" data-app="browser" title="AeroBrowser"></div>
-    <div class="dock-item" data-app="files" title="AeroFiles"></div>
-    <div class="dock-item" data-app="snapshots" title="Snapshots"></div>
+    <div class="dock-item" data-app="timeline" title="Time Travel"></div>
     <div class="dock-item" data-app="settings" title="Settings"></div>
   </div>
 
-  <!-- Main window -->
-  <div class="glass-panel window" id="window-main">
+  <!-- Dashboard -->
+  <div class="glass-panel window" id="window-dashboard">
     <div class="window-header">
-      <span class="window-title">AeroOS</span>
+      <span class="window-title">AeroOS Dashboard</span>
       <div class="window-controls">
+        <button class="theme-toggle" title="Toggle theme">◐</button>
         <button class="close"></button><button class="minimize"></button><button class="maximize"></button>
       </div>
     </div>
     <div class="window-content">
-      <h1>AeroOS</h1>
-      <p id="status">Initializing...</p>
-      <div id="system-info">
-        <div class="info-row"><span>CPU</span><span id="cpu-cores">-</span></div>
-        <div class="info-row"><span>RAM</span><span id="ram-size">-</span></div>
-        <div class="info-row"><span>GPU</span><span id="gpu-model">-</span></div>
-        <div class="info-row"><span>Status</span><span id="vm-status">-</span></div>
-        <div class="info-row"><span>Snapshots</span><span id="snap-count">0</span></div>
-        <div class="info-row"><span>Dirty pages</span><span id="dirty-pages">0</span></div>
+      <div class="hero">
+        <h1>AeroOS</h1>
+        <p class="subtitle">Portable OS · v2.2.0 Horizon</p>
       </div>
-      <div id="snapshots-panel" class="hidden">
-        <h3>Snapshots</h3>
-        <ul id="snapshot-list"></ul>
-        <button id="create-snapshot">Create snapshot</button>
+
+      <div class="cards">
+        <div class="card"><div class="card-label">CPU</div><div class="card-value" id="cpu-cores">—</div></div>
+        <div class="card"><div class="card-label">RAM</div><div class="card-value" id="ram-size">—</div></div>
+        <div class="card"><div class="card-label">GPU</div><div class="card-value" id="gpu-model">—</div></div>
+        <div class="card"><div class="card-label">VM</div><div class="card-value" id="vm-status">—</div></div>
+      </div>
+
+      <div class="charts">
+        <div class="chart-block">
+          <div class="chart-title">CPU</div>
+          <canvas id="chart-cpu" width="560" height="120"></canvas>
+        </div>
+        <div class="chart-block">
+          <div class="chart-title">Memory activity</div>
+          <canvas id="chart-mem" width="560" height="120"></canvas>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat"><span class="stat-label">Snapshots</span><span class="stat-value" id="snap-count">0</span></div>
+        <div class="stat"><span class="stat-label">Dirty pages</span><span class="stat-value" id="dirty-pages">0</span></div>
       </div>
     </div>
   </div>
 
-  <!-- AeroTerm -->
+  <!-- Terminal -->
   <div class="glass-panel window hidden" id="window-terminal">
     <div class="window-header">
       <span class="window-title">AeroTerm</span>
@@ -59,33 +70,24 @@
     </div>
   </div>
 
-  <!-- AeroBrowser -->
-  <div class="glass-panel window hidden" id="window-browser">
+  <!-- Time Travel -->
+  <div class="glass-panel window hidden" id="window-timeline">
     <div class="window-header">
-      <span class="window-title">AeroBrowser</span>
+      <span class="window-title">Time Travel</span>
       <div class="window-controls">
-        <button class="close-browser"></button><button class="minimize"></button><button class="maximize"></button>
-      </div>
-    </div>
-    <div class="window-content browser-content">
-      <div class="browser-toolbar">
-        <input type="text" id="browser-url" placeholder="https://example.com" />
-        <button id="browser-go">Go</button>
-      </div>
-      <iframe id="browser-frame" src="about:blank" sandbox="allow-scripts allow-same-origin"></iframe>
-    </div>
-  </div>
-
-  <!-- AeroFiles -->
-  <div class="glass-panel window hidden" id="window-files">
-    <div class="window-header">
-      <span class="window-title">AeroFiles</span>
-      <div class="window-controls">
-        <button class="close-files"></button><button class="minimize"></button><button class="maximize"></button>
+        <button class="close-timeline"></button><button class="minimize"></button><button class="maximize"></button>
       </div>
     </div>
     <div class="window-content">
-      <div id="file-list"></div>
+      <h3>Snapshot timeline</h3>
+      <p class="timeline-help">Move the slider to restore any previous state instantly.</p>
+      <input type="range" id="timeline-slider" min="0" max="0" value="0">
+      <div class="timeline-labels">
+        <span id="timeline-first">—</span>
+        <span id="timeline-selected">now</span>
+        <span id="timeline-last">—</span>
+      </div>
+      <button id="timeline-restore" class="primary-btn">Restore</button>
     </div>
   </div>
 
@@ -98,20 +100,27 @@
       </div>
     </div>
     <div class="window-content">
-      <h3>VM Configuration</h3>
-      <div class="setting-row"><label>CPU cores</label><span id="cfg-cpu">-</span></div>
-      <div class="setting-row"><label>RAM (MB)</label><span id="cfg-ram">-</span></div>
-      <div class="setting-row"><label>GPU</label><span id="cfg-gpu">-</span></div>
-      <div class="setting-row"><label>Mode</label><span id="cfg-mode">-</span></div>
-      <p class="settings-note">Edit <code>aeroos.config.toml</code> to change.</p>
+      <h3>AeroOS Settings</h3>
+      <div class="setting-row"><label>Theme</label>
+        <select id="theme-select">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="aero">Aero (glass)</option>
+        </select>
+      </div>
+      <div class="setting-row"><label>Blur intensity</label>
+        <input type="range" id="blur-slider" min="0" max="40" value="20">
+      </div>
+      <div class="setting-row"><label>Accent color</label>
+        <input type="color" id="accent-picker" value="#4a9eff">
+      </div>
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 <script src="js/main.js"></script>
 <script src="js/terminal.js"></script>
-<script src="js/browser.js"></script>
-<script src="js/files.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/theme.js"></script>
 </body>
 </html>

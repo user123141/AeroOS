@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+mod agent;
 mod boot;
 mod config;
 mod crypto;

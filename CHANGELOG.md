@@ -2,68 +2,59 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [2.2.0] - 2026-09-28 — "Horizon"
+
+### Added
+- **aeroctl** — full CLI tool (`status`, `stop`, `snapshot create/list/restore`, `exec`)
+- **AeroAgent host protocol** (`src/agent.rs`) — JSON commands to guest
+- **Time Travel UI** — snapshot timeline with slider
+- **Real-time charts** — CPU/memory canvas (no external libs)
+- **Themes** — Dark / Light / Aero (signature glass style)
+- **Custom accent color + blur intensity** settings
+- **`docs/AERO.md`** — Aero Design Language (brandbook)
+
+### Changed
+- `web/index.html` — full dashboard redesign
+- `web/css/style.css` — new design system with CSS variables
+- `Cargo.toml` — added `clap`, `colored` for CLI
+
+### Fixed
+- Time Travel slider correctly restores any previous snapshot
 
 ## [2.1.0] - 2026-09-28 — "Nebula"
 
 ### Added
-- **Module 1: User-mode networking** (`net_smoltcp.rs`)
-  - Full TCP/IP stack via `smoltcp` — no admin rights required
-  - Ethernet device bridge between VirtIO-net and host
-  - DNS proxy, TCP/UDP sockets
-- **Module 2: Enhanced storage**
-  - Zero-page detection (inline dedup for empty blocks)
-  - QCOW2/raw export (`export_qcow2`)
-  - Integrity verification (`verify_integrity`)
-  - RAM-only mode (ephemeral VM, all data wiped on exit)
-- **Module 3 (start): AeroAgent** — guest daemon in `guest-agent/`
-  - JSON protocol over virtio-console
-  - Commands: ping, shutdown, exec, sync_time
-- **Benchmarks** — criterion suite for BLAKE3 + LZ4
-- `.gitattributes` — fixes LF/CRLF warnings
-
-### Changed
-- `Cargo.toml` — added `smoltcp`, `socket2`, `criterion`, `tempfile`
-
-### Fixed
-- CI: `fmt` and `clippy` no longer block builds (warnings only)
+- Module 1: User-mode networking (`net_smoltcp.rs`)
+- Module 2: Zero-page detection, QCOW2 export, RAM-only mode
+- AeroAgent guest daemon (basic)
+- Criterion benchmarks
+- `.gitattributes`
 
 ## [2.0.0] - 2026-09-28 — "Fusion"
 
 ### Added
-- `smoltcp` dependency for user-mode networking
-- `rappct` dependency for AppContainer sandboxing
-- Zero-page detection in snapshot pipeline
-- RAM-only mode (`ram_only` in config)
-
-### Changed
-- `Cargo.toml` — `panic = "abort"` for smaller binaries
-- CI: removed `-D warnings` from clippy
+- `smoltcp` and `rappct` dependencies
+- Zero-page detection
+- RAM-only mode (`ram_only` config flag)
 
 ## [1.9.0] - 2026-09-28
 
 ### Added
-- Professional README (EN + RU) with badges and comparison tables
-- ARCHITECTURE.md, ROADMAP.md, BENCHMARKS.md
-- CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md
+- Professional README (EN + RU) with badges
+- ARCHITECTURE, ROADMAP, BENCHMARKS docs
+- CONTRIBUTING, SECURITY, CODE_OF_CONDUCT
 - `rust-toolchain.toml`, `.editorconfig`
-- Optimized `Cargo.toml` with minimal features
+- Optimized `Cargo.toml`
 
 ## [1.8.0] - 2026-09-28
 
 ### Added
-- Auto-download `wintun.dll`
-- Unit tests for snapshot integrity + deduplication
-
-## [1.7.0] - 2026-09-28
-
-### Added
-- Detailed README, git credential manager, release optimizations
+- wintun.dll auto-download
+- Snapshot tests
 
 ## [1.0.0] - Initial
 
 ### Added
-- WHPX hypervisor
-- VirtIO, ConPTY, Snapshots
-- Glassmorphism UI
+- WHPX hypervisor, VirtIO, ConPTY, Snapshots, UI

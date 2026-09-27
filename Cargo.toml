@@ -1,6 +1,6 @@
 ﻿[package]
 name = "aeroos"
-version = "2.1.0"
+version = "2.2.0"
 edition = "2021"
 authors = ["AeroOS Contributors"]
 description = "AeroOS — Portable OS for Windows in a single executable"
@@ -10,14 +10,27 @@ readme = "README.md"
 keywords = ["virtualization", "hypervisor", "whpx", "vm", "operating-system"]
 categories = ["virtualization", "os"]
 rust-version = "1.75"
+default-run = "aeroos"
+
+[[bin]]
+name = "aeroos"
+path = "src/main.rs"
+
+[[bin]]
+name = "aeroctl"
+path = "src/bin/aeroctl.rs"
+
+[[bench]]
+name = "snapshot"
+harness = false
 
 [dependencies]
-# Local vendored
+# Local
 whpx   = { path = "vendor/whpx" }
 conpty = { path = "vendor/conpty" }
 
-# Runtime & async
-tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal"] }
+# Runtime
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "io-util", "io-std"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 tokio-tungstenite = "0.24"
 
@@ -25,6 +38,10 @@ tokio-tungstenite = "0.24"
 hyper = { version = "1.0", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 http-body-util = "0.1"
+
+# CLI
+clap = { version = "4.5", features = ["derive", "color"] }
+colored = "2.1"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -56,16 +73,13 @@ thiserror = "2.0"
 # Host integration
 arboard = "3.4"
 
-# --- Module 1: User-mode networking ---
+# Networking
 smoltcp = { version = "0.11", default-features = false, features = [
     "std", "medium-ip", "medium-ethernet",
     "proto-ipv4", "proto-icmp",
     "socket-tcp", "socket-udp", "socket-icmp", "socket-dhcpv4"
 ] }
 socket2 = { version = "0.5", features = ["all"] }
-
-# --- Module 2: QCOW2 export ---
-qcow2 = "0.1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = [
@@ -78,10 +92,6 @@ winapi = { version = "0.3", features = [
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.13"
-
-[[bench]]
-name = "snapshot"
-harness = false
 
 [features]
 default = []
@@ -105,7 +115,6 @@ incremental = false
 [profile.dev]
 opt-level = 0
 debug = 1
-incremental = true
 
 [profile.test]
 opt-level = 1
