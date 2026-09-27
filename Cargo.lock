@@ -20,7 +20,7 @@ dependencies = [
 
 [[package]]
 name = "aeroos"
-version = "4.1.8"
+version = "4.2.0"
 dependencies = [
  "aes-gcm",
  "anyhow",

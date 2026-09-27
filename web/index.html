@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -8,80 +8,139 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div class="desktop">
+<div class="desktop" id="desktop">
+
+  <!-- AeroDock -->
   <div class="glass-panel dock">
-    <div class="dock-item" data-app="dashboard" title="Dashboard"></div>
-    <div class="dock-item" data-app="terminal" title="AeroTerm"></div>
-    <div class="dock-item" data-app="timeline" title="Time Travel"></div>
-    <div class="dock-item" data-app="settings" title="Settings"></div>
+    <div class="dock-item" data-app="dashboard" title="Dashboard">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+    </div>
+    <div class="dock-item" data-app="terminal" title="Terminal">
+      <svg viewBox="0 0 24 24"><polyline points="4,6 10,12 4,18"/><line x1="12" y1="18" x2="20" y2="18"/></svg>
+    </div>
+    <div class="dock-item" data-app="timeline" title="Timeline">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/></svg>
+    </div>
+    <div class="dock-item" data-app="settings" title="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+    </div>
   </div>
 
-  <div class="glass-panel window" id="window-dashboard">
+  <!-- Dashboard -->
+  <div class="glass-panel window" id="window-dashboard" data-window="dashboard">
     <div class="window-header">
-      <span class="window-title">AeroOS Dashboard</span>
+      <span class="window-title" data-i18n="dashboard">Dashboard</span>
       <div class="window-controls">
-        <button class="theme-toggle" title="Toggle theme">◐</button>
-        <button class="close"></button><button class="minimize"></button><button class="maximize"></button>
+        <button class="ctrl-theme" title="Toggle theme">◐</button>
+        <button class="ctrl-min" title="Minimize"></button>
+        <button class="ctrl-max" title="Maximize"></button>
+        <button class="ctrl-close" title="Close"></button>
       </div>
     </div>
     <div class="window-content">
-      <div class="vm-tabs" id="vm-tabs"></div>
-      <div class="hero"><h1>AeroOS</h1><p class="subtitle">Portable OS · v2.9.0 Vertex</p></div>
+      <div class="hero">
+        <h1 data-i18n="welcome">AeroOS</h1>
+        <p class="subtitle">Portable OS · v4.2.0 Interface</p>
+      </div>
       <div class="cards">
-        <div class="card"><div class="card-label">CPU</div><div class="card-value" id="cpu-cores">—</div></div>
-        <div class="card"><div class="card-label">RAM</div><div class="card-value" id="ram-size">—</div></div>
-        <div class="card"><div class="card-label">GPU</div><div class="card-value" id="gpu-model">—</div></div>
-        <div class="card"><div class="card-label">VM</div><div class="card-value" id="vm-status">—</div></div>
+        <div class="card"><div class="card-label" data-i18n="cpu">CPU</div><div class="card-value" id="cpu-cores">—</div></div>
+        <div class="card"><div class="card-label" data-i18n="ram">RAM</div><div class="card-value" id="ram-size">—</div></div>
+        <div class="card"><div class="card-label" data-i18n="gpu">GPU</div><div class="card-value" id="gpu-model">—</div></div>
+        <div class="card"><div class="card-label" data-i18n="status">Status</div><div class="card-value" id="vm-status">—</div></div>
       </div>
       <div class="charts">
-        <div class="chart-block"><div class="chart-title">CPU</div><canvas id="chart-cpu" width="560" height="120"></canvas></div>
-        <div class="chart-block"><div class="chart-title">Memory</div><canvas id="chart-mem" width="560" height="120"></canvas></div>
+        <div class="chart-block"><div class="chart-title" data-i18n="cpu">CPU</div><canvas id="chart-cpu" width="560" height="120"></canvas></div>
+        <div class="chart-block"><div class="chart-title" data-i18n="ram">RAM</div><canvas id="chart-mem" width="560" height="120"></canvas></div>
       </div>
       <div class="vm-stats-panel" id="vm-stats-panel">
-        <h3 class="vm-stats-title">Virtual Machines</h3>
+        <h3 class="vm-stats-title" data-i18n="virtualMachines">Virtual Machines</h3>
         <div class="vm-stats-grid" id="vm-stats-grid"></div>
       </div>
       <div class="stats-row">
-        <div class="stat"><span class="stat-label">Snapshots</span><span class="stat-value" id="snap-count">0</span></div>
-        <div class="stat"><span class="stat-label">Dirty pages</span><span class="stat-value" id="dirty-pages">0</span></div>
+        <div class="stat"><span class="stat-label" data-i18n="snapshots">Snapshots</span><span class="stat-value" id="snap-count">0</span></div>
+        <div class="stat"><span class="stat-label" data-i18n="dirtyPages">Dirty pages</span><span class="stat-value" id="dirty-pages">0</span></div>
       </div>
     </div>
   </div>
 
-  <div class="glass-panel window hidden" id="window-terminal">
-    <div class="window-header"><span class="window-title">AeroTerm</span>
-      <div class="window-controls"><button class="close-terminal"></button><button class="minimize"></button><button class="maximize"></button></div>
+  <!-- Terminal -->
+  <div class="glass-panel window hidden" id="window-terminal" data-window="terminal">
+    <div class="window-header">
+      <span class="window-title" data-i18n="terminal">Terminal</span>
+      <div class="window-controls">
+        <button class="ctrl-min"></button>
+        <button class="ctrl-max"></button>
+        <button class="ctrl-close"></button>
+      </div>
     </div>
-    <div class="window-content terminal-content"><div id="xterm-container"></div></div>
+    <div class="window-content terminal-content">
+      <div id="xterm-container"></div>
+    </div>
   </div>
 
-  <div class="glass-panel window hidden" id="window-timeline">
-    <div class="window-header"><span class="window-title">Time Travel</span>
-      <div class="window-controls"><button class="close-timeline"></button><button class="minimize"></button><button class="maximize"></button></div>
+  <!-- Timeline -->
+  <div class="glass-panel window hidden" id="window-timeline" data-window="timeline">
+    <div class="window-header">
+      <span class="window-title" data-i18n="timeline">Time Travel</span>
+      <div class="window-controls">
+        <button class="ctrl-min"></button>
+        <button class="ctrl-max"></button>
+        <button class="ctrl-close"></button>
+      </div>
     </div>
     <div class="window-content">
-      <h3>Snapshot timeline</h3>
-      <p class="timeline-help">Move the slider to restore any previous state instantly.</p>
+      <h3 data-i18n="snapshotsTitle">Snapshots</h3>
+      <p class="timeline-help" data-i18n="timelineHelp">Move the slider to restore any previous state instantly.</p>
       <input type="range" id="timeline-slider" min="0" max="0" value="0">
-      <div class="timeline-labels"><span id="timeline-first">—</span><span id="timeline-selected">now</span><span id="timeline-last">—</span></div>
-      <button id="timeline-restore" class="primary-btn">Restore</button>
+      <div class="timeline-labels">
+        <span id="timeline-first">—</span>
+        <span id="timeline-selected">now</span>
+        <span id="timeline-last">—</span>
+      </div>
+      <button id="timeline-restore" class="primary-btn" data-i18n="restore">Restore</button>
     </div>
   </div>
 
-  <div class="glass-panel window hidden" id="window-settings">
-    <div class="window-header"><span class="window-title">Settings</span>
-      <div class="window-controls"><button class="close-settings"></button><button class="minimize"></button><button class="maximize"></button></div>
+  <!-- Settings -->
+  <div class="glass-panel window hidden" id="window-settings" data-window="settings">
+    <div class="window-header">
+      <span class="window-title" data-i18n="settings">Settings</span>
+      <div class="window-controls">
+        <button class="ctrl-min"></button>
+        <button class="ctrl-max"></button>
+        <button class="ctrl-close"></button>
+      </div>
     </div>
     <div class="window-content">
       <h3>AeroOS Settings</h3>
-      <div class="setting-row"><label>Theme</label>
-        <select id="theme-select"><option value="dark">Dark</option><option value="light">Light</option><option value="aero">Aero</option></select>
+      <div class="setting-row">
+        <label data-i18n="theme">Theme</label>
+        <select id="theme-select">
+          <option value="dark" data-i18n="themeDark">Dark</option>
+          <option value="light" data-i18n="themeLight">Light</option>
+          <option value="aero" data-i18n="themeAero">Aero</option>
+        </select>
       </div>
-      <div class="setting-row"><label>Blur intensity</label><input type="range" id="blur-slider" min="0" max="40" value="20"></div>
-      <div class="setting-row"><label>Accent color</label><input type="color" id="accent-picker" value="#4a9eff"></div>
+      <div class="setting-row">
+        <label data-i18n="language">Language</label>
+        <select id="lang-select">
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label data-i18n="blurIntensity">Blur intensity</label>
+        <input type="range" id="blur-slider" min="0" max="40" value="20">
+      </div>
+      <div class="setting-row">
+        <label data-i18n="accentColor">Accent color</label>
+        <input type="color" id="accent-picker" value="#4a9eff">
+      </div>
     </div>
   </div>
+
 </div>
+<script src="js/i18n.js"></script>
 <script src="js/main.js"></script>
 <script src="js/terminal.js"></script>
 <script src="js/charts.js"></script>

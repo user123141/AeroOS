@@ -18,10 +18,21 @@ window.addEventListener('load', () => {
   applyTheme(saved);
   themeIdx = THEMES.indexOf(saved);
 
-  const sel = document.getElementById('theme-select');
-  if (sel) {
-    sel.value = saved;
-    sel.onchange = () => { applyTheme(sel.value); themeIdx = THEMES.indexOf(sel.value); };
+  const themeSel = document.getElementById('theme-select');
+  if (themeSel) {
+    themeSel.value = saved;
+    themeSel.onchange = () => { applyTheme(themeSel.value); themeIdx = THEMES.indexOf(themeSel.value); };
+  }
+
+  const langSel = document.getElementById('lang-select');
+  if (langSel) {
+    langSel.value = window.getLanguage ? window.getLanguage() : 'ru';
+    langSel.onchange = () => {
+      if (window.setLanguage) {
+        window.setLanguage(langSel.value);
+        window.dispatchEvent(new Event('aero-lang-changed'));
+      }
+    };
   }
 
   const blur = document.getElementById('blur-slider');

@@ -7,6 +7,27 @@
 
 
 
+
+## [4.2.0] - 2026-09-28 — "Interface"
+
+### Added
+- **Draggable windows** — за header мышью, с границами экрана
+- **Window focus** — z-index при клике, окна поднимаются
+- **i18n** (RU/EN) — `web/js/i18n.js`, переключатель в настройках, сохранение в localStorage
+- **SVG иконки** в доке вместо пустых квадратов
+- **Кнопки minimize/maximize** работают (анимации)
+- **docs/README.md** — единая точка входа
+
+### Changed
+- `web/index.html` — data-i18n атрибуты для мультиязычности
+- `web/css/style.css` — убран лишний `::before` glow, улучшены transitions
+- `web/js/main.js` — переписан с drag + focus + i18n
+- `web/js/theme.js` — интеграция с языками
+
+### Fixed
+- Окна больше не "висят" — можно двигать, фокусировать, скрывать
+- Кнопка minimize сворачивает в док-подобное состояние
+- Кнопка maximize растягивает на всё окно
 ## [4.1.8] - 2026-09-28
 
 ### Fixed
