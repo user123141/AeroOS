@@ -1,36 +1,60 @@
 ﻿[package]
 name = "aeroos"
-version = "1.8.0"
+version = "1.9.0"
 edition = "2021"
+authors = ["AeroOS Contributors"]
+description = "AeroOS — Portable OS for Windows in a single executable"
+license = "MIT"
+repository = "https://github.com/user123141/AeroOS"
+readme = "README.md"
+keywords = ["virtualization", "hypervisor", "whpx", "vm", "operating-system"]
+categories = ["virtualization", "os"]
+rust-version = "1.75"
 
 [dependencies]
+# Local vendored
 whpx   = { path = "vendor/whpx" }
 conpty = { path = "vendor/conpty" }
-rust-embed       = "8.12"
-hyper            = { version = "1.0", features = ["full"] }
-hyper-util       = { version = "0.1", features = ["full"] }
-http-body-util   = "0.1"
-tower            = { version = "0.5", features = ["util"] }
+
+# Runtime & async (minimal features)
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 tokio-tungstenite = "0.24"
-futures-util     = "0.3"
-tokio            = { version = "1.0", features = ["full"] }
-serde            = { version = "1.0", features = ["derive"] }
-serde_json       = "1.0"
-toml             = "0.8"
-lz4_flex         = "0.11"
-blake3           = "1.5"
-aes-gcm          = "0.10"
-argon2           = "0.5"
-rand             = "0.8"
-tracing          = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "std"] }
-mime_guess       = "2.0"
-thiserror        = "2.0"
-anyhow           = "1.0"
-hex              = "0.4"
-sha2             = "0.10"
-base64           = "0.22"
-arboard          = "3.4"
+
+# HTTP server
+hyper = { version = "1.0", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Compression & crypto
+lz4_flex = { version = "0.11", default-features = false, features = ["safe-encode", "safe-decode"] }
+blake3 = { version = "1.5", features = ["mmap", "rayon"] }
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+
+# Web assets
+rust-embed = { version = "8.5", features = ["include-exclude"] }
+mime_guess = "2.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "std"] }
+
+# Errors
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Host integration
+arboard = "3.4"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = [
@@ -51,9 +75,19 @@ cosmo-build = { version = "5", optional = true }
 [target.'cfg(cosmo)'.dependencies]
 cosmo-compat = { version = "5", optional = true }
 
+# --- Performance profile ---
 [profile.release]
-opt-level = "z"
+opt-level = 3
 lto = "fat"
 codegen-units = 1
-strip = true
+strip = "symbols"
 panic = "abort"
+incremental = false
+
+[profile.dev]
+opt-level = 0
+debug = 1
+incremental = true
+
+[profile.test]
+opt-level = 1
