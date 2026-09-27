@@ -1,4 +1,4 @@
-use crate::config::AeroConfig;
+﻿use crate::config::AeroConfig;
 use crate::data_folder::DataFolder;
 use crate::virtio::{GuestMemory, VirtioMmio};
 use anyhow::{Context, Result};
@@ -65,6 +65,12 @@ impl VirtualMachine {
             .map_err(|e| anyhow::anyhow!("{}", e))?;
 
         let ram_size = (config.memory.ram_mb * 1024 * 1024) as usize;
+
+        // RAM-only mode: диск в памяти, всё стирается при выходе
+        let ram_only = config.snapshot.ram_only;
+        if ram_only {
+            tracing::info!("RAM-only mode enabled (ephemeral VM)");
+        }
         let dirty_bitmap = if caps.dirty_page_tracking {
             let _ = partition.set_property(WHvPartitionPropertyCode::DirtyPageTracking, 1);
             Arc::new(std::sync::Mutex::new(vec![0u8; (ram_size / 4096 + 7) / 8]))

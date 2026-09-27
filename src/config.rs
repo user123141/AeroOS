@@ -62,6 +62,8 @@ pub struct SnapshotConfig {
     pub max_size_mb: u64,
     #[serde(default)]
     pub encrypt: bool,
+    #[serde(default)]
+    pub ram_only: bool,
 }
 fn d_int() -> u64 {
     1000

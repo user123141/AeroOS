@@ -11,6 +11,7 @@ mod crypto;
 mod data_folder;
 mod hypervisor;
 mod ipc;
+mod net_smoltcp;
 mod security;
 mod snapshot;
 mod tap;

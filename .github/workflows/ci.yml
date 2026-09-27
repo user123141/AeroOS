@@ -26,23 +26,24 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Format check
+      - name: Format check (soft)
         run: cargo fmt --all -- --check
         continue-on-error: true
 
-      - name: Clippy (warnings only)
+      - name: Clippy (soft)
         run: cargo clippy --all-targets
         continue-on-error: true
 
-      - name: Build release
+      - name: Build
         run: cargo build --release
 
-      - name: Run tests
+      - name: Test
         run: cargo test --release
         continue-on-error: true
 
-      - name: Upload artifact
+      - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: aeroos-windows-x64
           path: target/release/aeroos.exe
+          retention-days: 30
