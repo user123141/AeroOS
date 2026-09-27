@@ -11,18 +11,23 @@ mod boot;
 mod config;
 mod crypto;
 mod data_folder;
+mod gpu_passthrough;
 mod hwid;
 mod hypervisor;
 mod ipc;
 mod license;
+mod migration;
 mod multi_vm;
+mod net_proxy;
 mod net_smoltcp;
+mod oci;
 mod sandbox;
 mod security;
 mod snapshot;
 mod tap;
 mod terminal;
 mod virtio;
+mod vnc;
 mod web;
 
 #[tokio::main]
@@ -30,7 +35,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
-    tracing::info!("[AeroOS] v3.0.0 Singularity starting");
+    tracing::info!("[AeroOS] v3.2.0 Momentum starting");
 
     let _ = sandbox::init_sandbox(&["data", "snapshots"]);
 
@@ -46,6 +51,11 @@ async fn main() -> Result<()> {
 
     if let Ok(hwid) = hwid::compute_hwid() {
         tracing::info!("HWID: {}", hwid);
+    }
+
+    // Detect GPUs
+    if let Ok(gpu) = gpu_passthrough::GpuPassthrough::new() {
+        tracing::info!("GPU devices: {}", gpu.devices().len());
     }
 
     let _ = security::verify_artifacts();

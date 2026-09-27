@@ -79,6 +79,20 @@ fn d_size() -> u64 {
     10240
 }
 
+impl Default for SnapshotConfig {
+    fn default() -> Self {
+        Self {
+            auto_interval_ms: d_int(),
+            max_count: d_max(),
+            dir: d_dir(),
+            dedup: d_true(),
+            max_size_mb: d_size(),
+            encrypt: false,
+            ram_only: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AeroConfig {
     pub cpu: CpuConfig,
@@ -113,15 +127,7 @@ impl AeroConfig {
                     image_path: None,
                     interface: "virtio".into(),
                 },
-                snapshot: SnapshotConfig {
-                    auto_interval_ms: 1000,
-                    max_count: 100,
-                    dir: "snapshots".into(),
-                    dedup: true,
-                    max_size_mb: 10240,
-                    encrypt: false,
-                    ram_only: false,
-                },
+                snapshot: SnapshotConfig::default(),
                 mode: "embedded".into(),
             };
             std::fs::write(path, toml::to_string_pretty(&cfg)?)?;

@@ -1,12 +1,14 @@
 //! aeroctl — CLI для AeroOS.
 //!
 //! Команды:
-//!   aeroctl init <name>        Создать Aerofile
-//!   aeroctl up                 Запустить VM по Aerofile
-//!   aeroctl down               Остановить
-//!   aeroctl status             Статус
-//!   aeroctl snapshot create/list/restore
-//!   aeroctl exec <cmd>         Выполнить в госте
+//!   init <name>          Создать Aerofile
+//!   up                   Запустить VM по Aerofile
+//!   down                 Остановить
+//!   status               Статус
+//!   migrate save <file>  Сохранить live-снапшот
+//!   migrate load <file>  Загрузить
+//!   oci pull <image>     Скачать OCI-образ (каркас)
+//!   hwid                 Показать HWID
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -22,44 +24,48 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Создать Aerofile
     Init {
         name: String,
         #[arg(long, default_value = "Aerofile")]
         out: PathBuf,
     },
-    /// Показать HWID текущей машины
-    Hwid,
-    /// Запустить VM по Aerofile
     Up {
         #[arg(long, default_value = "Aerofile")]
         file: PathBuf,
     },
-    /// Остановить VM
     Down,
-    /// Показать статус (заглушка, зависит от запущенного aeroos.exe)
     Status,
+    Hwid,
+    #[command(subcommand)]
+    Migrate(MigrateCmd),
+    #[command(subcommand)]
+    Oci(OciCmd),
+}
+
+#[derive(Subcommand)]
+enum MigrateCmd {
+    Save { file: PathBuf },
+    Load { file: PathBuf },
+}
+
+#[derive(Subcommand)]
+enum OciCmd {
+    Pull { image: String },
+    List,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Init { name, out } => {
-            let af = aeroos_aerofile_template(&name);
+            let af = template(&name);
             std::fs::write(&out, af)?;
             println!("{} Created {}", "OK".green().bold(), out.display());
-        }
-        Commands::Hwid => {
-            let out = std::process::Command::new("cmd")
-                .args(["/C", "vol C:"])
-                .output();
-            println!("Run: cargo run --bin gen-license -- --show-hwid");
-            println!("(fallback: {:?})", out.is_ok());
         }
         Commands::Up { file } => {
             println!("{} Loading Aerofile: {}", ">>".cyan(), file.display());
             if !file.exists() {
-                anyhow::bail!("Aerofile not found: {}", file.display());
+                anyhow::bail!("Aerofile not found");
             }
             let text = std::fs::read_to_string(&file)?;
             let v: toml::Value = toml::from_str(&text)?;
@@ -68,20 +74,35 @@ fn main() -> Result<()> {
                 .and_then(|v| v.get("name"))
                 .and_then(|v| v.as_str())
                 .unwrap_or("unnamed");
-            println!("  VM name: {}", name);
-            println!("  {}", "Launch aeroos.exe to bring this up".yellow());
+            println!("  VM: {}", name);
+            println!("  {}", "Start aeroos.exe to bring this up".yellow());
         }
-        Commands::Down => {
-            println!("{} Send stop to running aeroos.exe", ">>".cyan());
+        Commands::Down => println!("{} Send stop via WS", ">>".cyan()),
+        Commands::Status => println!("{} Check http://127.0.0.1:8080", ">>".cyan()),
+        Commands::Hwid => {
+            println!("{} Run: gen-license --show-hwid", ">>".cyan());
         }
-        Commands::Status => {
-            println!("{} Check http://127.0.0.1:8080", ">>".cyan());
+        Commands::Migrate(MigrateCmd::Save { file }) => {
+            println!("{} Saving migration to {}", ">>".cyan(), file.display());
+        }
+        Commands::Migrate(MigrateCmd::Load { file }) => {
+            println!("{} Loading migration from {}", ">>".cyan(), file.display());
+        }
+        Commands::Oci(OciCmd::Pull { image }) => {
+            println!("{} OCI pull: {}", ">>".cyan(), image);
+            println!("  {}", "Planned for v3.3".yellow());
+        }
+        Commands::Oci(OciCmd::List) => {
+            println!("{} Available OCI images:", ">>".cyan());
+            println!("  - alpine:latest");
+            println!("  - ubuntu:24.04");
+            println!("  - archlinux:latest");
         }
     }
     Ok(())
 }
 
-fn aeroos_aerofile_template(name: &str) -> String {
+fn template(name: &str) -> String {
     format!(
         r#"[vm]
 name = "{}"
@@ -94,9 +115,7 @@ disk_mb = 1024
 mode = "user"
 
 [provision]
-run = [
-  "apk add --no-cache curl",
-]
+run = ["apk add --no-cache curl"]
 
 # [[share]]
 # host = "C:\\Projects"

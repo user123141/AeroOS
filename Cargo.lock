@@ -20,7 +20,7 @@ dependencies = [
 
 [[package]]
 name = "aeroos"
-version = "3.0.0"
+version = "3.2.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -40,6 +40,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
+ "image",
  "lz4_flex",
  "mime_guess",
  "rand",
@@ -1203,6 +1204,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]

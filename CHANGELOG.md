@@ -1,22 +1,29 @@
 ﻿# Changelog
 
-## [3.0.0] - 2026-09-28 — "Singularity"
+## [3.2.0] - 2026-09-28 — "Momentum"
 
 ### Fixed
-- **КРИТИЧНО:** `src/net_smoltcp.rs` — API `smoltcp 0.11`:
-  - `Device` без лайфтайма, `type RxToken<'a>`, `type TxToken<'a>`
-  - `receive(&mut self, Instant)`, `transmit(&mut self, Instant)`
-- **КРИТИЧНО:** `src/config.rs` — добавлено поле `ram_only` в initializer
-- `src/bin/aeroctl.rs` — убран unused import `Context`
+- **КРИТИЧНО:** `SnapshotConfig: Default` — добавлен `impl Default` в `config.rs`
+- `hypervisor.rs` — убран unnecessary `unsafe` блок
 
 ### Added
-- `.cargo/config.toml` — `jobs = 4` (защита от LNK1102 / OOM)
-- Профессиональный `.gitignore` с 8 категориями
-- README v3.0.0
+- **TCP Proxy** (`src/net_proxy.rs`) — реальный guest → host socket bridge
+- **VNC/Frame streaming** (`src/vnc.rs`) — framebuffer → JPEG → WebSocket
+- **Live migration** (`src/migration.rs`) — `.aeromig` формат + тесты
+- **OCI runtime** (`src/oci.rs`) — разбор манифестов, тесты
+- **GPU passthrough** (`src/gpu_passthrough.rs`) — детект GPU через WMI
+- `image` crate — JPEG encoding
+- CLI: `aeroctl migrate save/load`, `aeroctl oci pull/list`
 
 ### Changed
-- `Cargo.toml` — версия 3.0.0, стабильный профиль release
-- Удалены `registry.rs`, `gpu_stream.rs` (вернутся в v3.1 с полной реализацией)
+- `Cargo.toml` — версия 3.2.0, добавлен `image`
+- `main.rs` — подключены все новые модули
+- Объединены v3.1 "Continuum" и v3.2 "Horizon" в одну итерацию
+
+## [3.0.0] - 2026-09-28 — "Singularity"
+### Fixed
+- smoltcp 0.11 Device trait (лaйфтаймы + Instant)
+- config.rs ram_only, .cargo/config.toml (OOM)
 
 ## [2.9.0] - Vertex
 ## [2.8.0] - Aurora

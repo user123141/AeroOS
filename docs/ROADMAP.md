@@ -5,34 +5,37 @@
 - 🟡 In progress
 - ❌ Not started
 
-## v3.0.0 — Singularity (current)
+## v3.2.0 — Momentum (current)
 
-- ✅ Fix smoltcp 0.11 Device trait
-- ✅ Fix config.rs ram_only
-- ✅ Professional .gitignore
-- ✅ .cargo/config.toml (OOM protection)
-- 🟡 Real TCP proxy (host socket bridge)
-- 🟡 9P end-to-end
+- ✅ Fix SnapshotConfig Default
+- ✅ TCP Proxy (guest → host socket)
+- ✅ VNC/Frame streaming (JPEG over WS)
+- ✅ Live migration (.aeromig)
+- ✅ OCI runtime (manifest parse)
+- ✅ GPU passthrough (device detection)
+- 🟡 Real TCP data flow end-to-end
+- 🟡 9P read/write through virtio
 
-## v3.1.0 — Continuum (planned)
+## v3.3.0 — Continuum (next)
 
-- ❌ Real TCP proxy via smoltcp
-- ❌ 9P read/write end-to-end
-- ❌ WebRTC/VNC canvas streaming
-- ❌ `aeroctl up` boots VM from Aerofile
+- ❌ 9P full data transfer
+- ❌ OCI → initramfs conversion
+- ❌ WebRTC VP8/H.264
+- ❌ `aeroctl up` actual VM boot
 - ❌ AeroRegistry online
 
-## v3.2.0 — Horizon
+## v4.0.0 — Singularity (vision)
 
-- ❌ Multi-VM UI (tabs + per-VM stats)
-- ❌ Live migration
-- ❌ GPU passthrough (VirGL)
-- ❌ OCI compatibility
+- ❌ Multi-VM UI (per-VM stats, tabs)
+- ❌ GPU passthrough actual (WDDM/Hyper-V GPU-P)
+- ❌ Linux/macOS host support
+- ❌ Enterprise license server
 
 ## Backlog
 
 - Time-travel diff viewer
 - Snapshot export to QCOW2
 - Guest agent file sync
-- Plugin system for UI
+- Plugin system
 - Encrypted disk images
+- Sound subsystem
