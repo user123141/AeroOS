@@ -1,6 +1,6 @@
 ﻿[package]
 name = "aeroos"
-version = "4.8.0"
+version = "5.0.1"
 edition = "2021"
 authors = ["AeroOS Contributors"]
 description = "AeroOS — Portable OS for Windows in a single executable"
@@ -87,6 +87,8 @@ sandbox = []
 
 [build-dependencies]
 cosmo-build = { version = "5", optional = true }
+aes-gcm = "0.10"
+hex = "0.4"
 
 [target.'cfg(cosmo)'.dependencies]
 cosmo-compat = { version = "5", optional = true }

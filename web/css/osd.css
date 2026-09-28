@@ -250,3 +250,24 @@
 [data-theme="light"] .cal-day:hover { background: rgba(0, 0, 0, 0.06); }
 [data-theme="light"] .cal-day.other-month { color: rgba(0, 0, 0, 0.25); }
 [data-theme="light"] .cal-day-name { color: rgba(0, 0, 0, 0.4); }
+
+/* Event indicator */
+.cal-day {
+  position: relative;
+}
+
+.cal-day.has-event::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4a9eff;
+}
+
+.cal-day.today.has-event::after {
+  background: #fff;
+}

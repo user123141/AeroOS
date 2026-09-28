@@ -1,11 +1,20 @@
-﻿// AeroOS Calendar popover with prev/next navigation
+﻿// AeroOS Calendar with events
 
 let calYear, calMonth;
+let calEvents = JSON.parse(localStorage.getItem('aero-cal-events') || '{}');
 
 function initCalendar() {
   const now = new Date();
   calYear = now.getFullYear();
   calMonth = now.getMonth();
+}
+
+function evKey(y, m, d) {
+  return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
+function saveEvents() {
+  localStorage.setItem('aero-cal-events', JSON.stringify(calEvents));
 }
 
 function renderCalendar() {
@@ -30,7 +39,8 @@ function renderCalendar() {
     cells.push({
       day: d,
       other: false,
-      today: d === today && calMonth === todayMonth && calYear === todayYear
+      today: d === today && calMonth === todayMonth && calYear === todayYear,
+      hasEvent: !!calEvents[evKey(calYear, calMonth, d)],
     });
   }
   while (cells.length % 7 !== 0) {
@@ -51,8 +61,27 @@ function renderCalendar() {
   });
   cells.forEach(c => {
     const el = document.createElement('div');
-    el.className = 'cal-day' + (c.other ? ' other-month' : '') + (c.today ? ' today' : '');
+    el.className = 'cal-day'
+      + (c.other ? ' other-month' : '')
+      + (c.today ? ' today' : '')
+      + (c.hasEvent ? ' has-event' : '');
     el.textContent = c.day;
+    if (!c.other) {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        const key = evKey(calYear, calMonth, c.day);
+        const current = calEvents[key] || '';
+        const v = prompt('Событие на ' + c.day + ':', current);
+        if (v === null) return;
+        if (v.trim() === '') {
+          delete calEvents[key];
+        } else {
+          calEvents[key] = v;
+        }
+        saveEvents();
+        renderCalendar();
+      };
+    }
     grid.appendChild(el);
   });
 }

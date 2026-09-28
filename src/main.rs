@@ -31,13 +31,14 @@ mod hwid;
 mod aerofile;
 mod multi_vm;
 mod sandbox;
-mod syscontrol;
 mod registry;
+mod syscontrol;
+mod hotkeys;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
-    tracing::info!("[AeroOS] v4.3.0 Integrity starting");
+    tracing::info!("[AeroOS] v5.0.1 hotfix starting");
 
     let _ = sandbox::init_sandbox(&["data", "snapshots"]);
 
@@ -70,7 +71,7 @@ async fn main() -> Result<()> {
         Err(e) => { tracing::warn!("data_folder: {}", e); return Ok(()); }
     };
 
-    // AeroBoot preload — kernel + initramfs
+    // AeroBoot preload
     {
         let mut ab = boot::AeroBoot::new();
         let kp = df.kernel_path();
@@ -105,19 +106,52 @@ async fn main() -> Result<()> {
 
     let token = security::generate_session_token();
     tracing::info!("Token: {}...", &token[..8]);
-    // Crypto-UI binding: derive UI key from license (if present)
-    let ui_key: web::UiKey = std::sync::Arc::new(tokio::sync::RwLock::new(
-        lic.license.as_ref().map(license::derive_ui_key),
-    ));
-    if ui_key.blocking_read().is_some() {
+
+    // Crypto-UI key (no blocking_read)
+    let has_license_for_ui = lic.license.is_some();
+    let ui_key_bytes = lic.license.as_ref().map(license::derive_ui_key);
+    let ui_key: web::UiKey = Arc::new(tokio::sync::RwLock::new(ui_key_bytes));
+    if has_license_for_ui {
         tracing::info!("Crypto-UI: key derived from license");
     } else {
         tracing::info!("Crypto-UI: no license, open mode");
     }
 
+    // Hotkeys (non-blocking, runs in own thread)
+    match hotkeys::register() {
+        Ok(rx) => {
+            std::thread::spawn(move || {
+                while let Ok(ev) = rx.recv() {
+                    match ev {
+                        hotkeys::HotkeyEvent::VolumeUp => {
+                            if let Ok(v) = syscontrol::get_volume() {
+                                let _ = syscontrol::set_volume((v + 5).min(100));
+                            }
+                        }
+                        hotkeys::HotkeyEvent::VolumeDown => {
+                            if let Ok(v) = syscontrol::get_volume() {
+                                let _ = syscontrol::set_volume(v.saturating_sub(5));
+                            }
+                        }
+                        hotkeys::HotkeyEvent::BrightnessUp => {
+                            if let Ok(b) = syscontrol::get_brightness() {
+                                let _ = syscontrol::set_brightness((b + 5).min(100));
+                            }
+                        }
+                        hotkeys::HotkeyEvent::BrightnessDown => {
+                            if let Ok(b) = syscontrol::get_brightness() {
+                                let _ = syscontrol::set_brightness(b.saturating_sub(5));
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        Err(e) => tracing::warn!("Hotkeys: {}", e),
+    }
 
+    // Web server
     let web_token = token.clone();
-    
     let web_handle = tokio::spawn(async move {
         if let Err(e) = web::run_server(web_token, ui_key).await {
             tracing::error!("web: {}", e);
@@ -157,5 +191,6 @@ async fn main() -> Result<()> {
         _ = web_handle => tracing::info!("web stopped"),
         _ = vm_handle  => tracing::info!("vm stopped"),
     }
+
     Ok(())
 }

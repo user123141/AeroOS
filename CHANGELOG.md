@@ -15,6 +15,78 @@
 
 
 
+
+
+
+## [5.0.1] - 2026-09-28 - hotfix
+
+### Fixed
+- **КРИТИЧНО:** `hotkeys.rs` — `RegisterHotKey` ожидает `u32` для mods и vk,
+  а передавал `isize` (MOD_CONTROL | MOD_ALT) и `i32` (VK_UP). Добавлены
+  явные касты `as UINT`.
+- **КРИТИЧНО:** `hotkeys.rs` — `mods` не включал `MOD_NOREPEAT`, что
+  приводило к spam-событиям при удержании клавиши.
+- **КРИТИЧНО:** `main.rs` — regex-replace при добавлении hotkeys мог
+  сработать криво. Файл перезаписан полностью.
+
+### Added
+- `hotkeys.rs`: счётчик зарегистрированных hotkeys (0..4), warning если <4
+- `hotkeys.rs`: `UnregisterHotKey` при выходе из loop
+- `hotkeys.rs`: `TranslateMessage` + `DispatchMessageW` в message loop
+## [5.0.0] - 2026-09-28 - "Aegis"
+
+### Fixed
+- **КРИТИЧНО:** `build.rs` — `aes_gcm::Error` не реализует `std::error::Error`
+  (opaque тип для защиты от side-channel). Заменено на `.map_err(|_| "...")`.
+
+### Added
+- **XOR-obfuscation** JS assets (`build.rs::obfuscate_web`):
+  - При `AEROOS_OBFUSCATE=1` шифрует `terminal.js`, `search.js`,
+    `notifications.js` через XOR (0xA7) в `.obf` файлы
+- **Self-contained README**: единый документ с архитектурой, API,
+  таблицами, дизайн-языком, roadmap — может заменить остальные
+
+### Changed
+- README содержит всё: quick start, возможности, сравнение, архитектуру,
+  API, безопасность, конфигурацию, Aerofile, CLI, дизайн, оптимизации, roadmap
+
+### Known issues
+- Brightness через WMI — только на ноутбуках
+- End-to-end VM boot — требует reboot с `bcdedit`
+## [4.9.0] - 2026-09-28 - "Fortress"
+
+### Fixed
+- **КРИТИЧНО:** `main.rs` — `blocking_read()` вызывал panic в tokio runtime.
+  Заменено на `lic.license.is_some()` до wrapping. Полная перезапись файла.
+- Правило: **никаких regex-replace многострочного кода** — только полная
+  перезапись через `Aero-W`.
+
+### Added
+- **Global hotkeys** (`src/hotkeys.rs`):
+  - `Ctrl+Alt+Up` -> Volume up (+5)
+  - `Ctrl+Alt+Down` -> Volume down (-5)
+  - `Ctrl+Alt+Right` -> Brightness up (+5)
+  - `Ctrl+Alt+Left` -> Brightness down (-5)
+  - Через `RegisterHotKey` + message loop в отдельном потоке
+- **Crypto-UI binding (реальный)**:
+  - `build.rs` — при `AEROOS_UI_KEY` env шифрует `web/js/main.js`
+    через AES-256-GCM в `web_encrypted/main.js.enc`
+  - `web.rs` — `/api/ui-key` эндпоинт отдаёт ключ только с лицензией
+  - `web/js/crypto.js` — fetch key → decrypt → eval (fallback на plain)
+  - Если лицензии нет — UI работает в open mode
+- **Calendar events**:
+  - Клик по дате — добавление/редактирование события
+  - Индикатор события (синяя точка под числом)
+  - Сохранение в localStorage
+- `Cargo.toml`: build-deps `aes-gcm`, `hex` для шифрования UI
+
+### Changed
+- `index.html` — вместо `<script src="js/main.js">` используется
+  `<script src="js/crypto.js">`, который сам решает что грузить
+
+### Known issues
+- Crypto-UI — защита от casual-патча (опытный реверсер всё равно достанет).
+- Brightness через WMI — работает только на ноутбуках.
 ## [4.7.0] - 2026-09-28 - "Crystal"
 
 ### Fixed
