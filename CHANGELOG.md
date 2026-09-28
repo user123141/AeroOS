@@ -14,6 +14,43 @@
 
 
 
+
+## [4.7.0] - 2026-09-28 - "Crystal"
+
+### Fixed
+- **КРИТИЧНО:** PowerShell parse error `window.addEventListener('load', ...)` — незакрытая скобка. Проблема в `-match`. Заменено на прямые строки
+- Light theme: белый текст больше не пропадает на белых элементах
+- `select option` в light theme — правильный тёмный текст на белом фоне
+- `popover` в light theme — теперь тёмный текст на светлом стекле
+
+### Added
+- **OSD (On-Screen Display)** для volume/brightness - Apple-style:
+  - 160x160 скруглённый блок по центру
+  - Иконка, меняющаяся по уровню (muted/low/mid/high)
+  - Segmented bar с белым fill
+  - Появляется на 1.5s при изменении слайдера
+- **Calendar popover** при клике на часы в topbar
+  - Пн..Вс заголовки
+  - Текущий день выделен красным
+  - Навигация по месяцам (в разработке)
+- **Crypto-UI binding (начало)**:
+  - `web.rs`: эндпоинт `/api/ui-key` — отдаёт ключ из `derive_ui_key(license)` только при валидной лицензии
+  - `main.rs`: `UiKey = Arc<RwLock<Option<[u8;32]>>>` — устанавливается при старте
+  - Если лицензии нет — `/api/ui-key` отдаёт 403 (фронт будет пропускать крипто-JS)
+- **Notification v3** — Crystal:
+  - Скругление 18px, glass-эффект 40px blur
+  - SVG close-button (кружок)
+  - Заголовки по типу (Информация/Готово/Внимание/Ошибка)
+  - Gradient border сверху (subtle highlight)
+
+### Changed
+- OSD вызывается из `topbar.js` при `slider.oninput`
+- `Notifications`: close-кнопка стала круглой SVG
+
+### Known issues
+- Crypto-UI binding: только каркас (key отдаётся, но `main.js` пока не зашифрован)
+- Calendar: нет навигации по месяцам (только текущий)
+- OSD не показывается при нажатии системных клавиш Windows (нужен глобальный хук — v4.8.0)
 ## [4.6.0] - 2026-09-28 - "Polish"
 
 ### Fixed

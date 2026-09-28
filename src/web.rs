@@ -1,4 +1,4 @@
-use anyhow::Result;
+﻿use anyhow::Result;
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
@@ -15,7 +15,11 @@ use tokio::net::TcpListener;
 #[folder = "web/"]
 struct WebAssets;
 
-pub async fn run_server(token: String) -> Result<()> {
+/// UI encryption key, set at startup based on license.
+/// If None — crypto binding disabled (Community fallback).
+pub type UiKey = Arc<tokio::sync::RwLock<Option<[u8; 32]>>>;
+
+pub async fn run_server(token: String, ui_key: UiKey) -> Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     tracing::info!("HTTP: http://{}", addr);
     let listener = TcpListener::bind(addr).await?;
@@ -25,11 +29,13 @@ pub async fn run_server(token: String) -> Result<()> {
         let (stream, _) = listener.accept().await?;
         let io = TokioIo::new(stream);
         let token = token.clone();
+        let ui_key = ui_key.clone();
 
         tokio::task::spawn(async move {
             let svc = service_fn(move |req| {
                 let token = token.clone();
-                async move { handle_request(req, token).await }
+                let ui_key = ui_key.clone();
+                async move { handle_request(req, token, ui_key).await }
             });
             if let Err(e) = http1::Builder::new().serve_connection(io, svc).await {
                 tracing::debug!("connection error: {}", e);
@@ -41,6 +47,7 @@ pub async fn run_server(token: String) -> Result<()> {
 async fn handle_request(
     req: Request<hyper::body::Incoming>,
     token: Arc<String>,
+    ui_key: UiKey,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     let path = req.uri().path();
     let path = if path == "/" {
@@ -49,6 +56,7 @@ async fn handle_request(
         &path[1..]
     };
 
+    // Session token for WebSocket auth
     if path == "api/token" {
         return Ok(Response::builder()
             .header("Content-Type", "application/json")
@@ -58,6 +66,29 @@ async fn handle_request(
                 token
             ))))
             .unwrap());
+    }
+
+    // UI encryption key (for crypto binding)
+    if path == "api/ui-key" {
+        let key = ui_key.read().await;
+        return match key.as_ref() {
+            Some(k) => {
+                let hex_key: String = k.iter().map(|b| format!("{:02x}", b)).collect();
+                Ok(Response::builder()
+                    .header("Content-Type", "application/json")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .body(Full::new(Bytes::from(format!(
+                        "{{\"key\":\"{}\"}}",
+                        hex_key
+                    ))))
+                    .unwrap())
+            }
+            None => Ok(Response::builder()
+                .status(StatusCode::FORBIDDEN)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from("{\"error\":\"no-license\"}")))
+                .unwrap()),
+        };
     }
 
     match WebAssets::get(path) {

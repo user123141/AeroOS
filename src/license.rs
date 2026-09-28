@@ -126,3 +126,17 @@ impl LicenseState {
     pub fn max_vms(&self) -> u32 { self.tier.max_vms() }
     pub fn max_ram_mb(&self) -> u64 { self.tier.max_ram_mb() }
 }
+/// Derive a 32-byte UI key from the license signature.
+/// Used for decrypting UI assets (crypto-UI binding).
+pub fn derive_ui_key(license: &License) -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(b"aeroos-ui-v1");
+    h.update(license.signature.as_bytes());
+    h.update(license.nonce.as_bytes());
+    h.update(license.holder.as_bytes());
+    let d = h.finalize();
+    let mut k = [0u8; 32];
+    k.copy_from_slice(&d);
+    k
+}

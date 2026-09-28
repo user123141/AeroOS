@@ -105,10 +105,21 @@ async fn main() -> Result<()> {
 
     let token = security::generate_session_token();
     tracing::info!("Token: {}...", &token[..8]);
+    // Crypto-UI binding: derive UI key from license (if present)
+    let ui_key: web::UiKey = std::sync::Arc::new(tokio::sync::RwLock::new(
+        lic.license.as_ref().map(license::derive_ui_key),
+    ));
+    if ui_key.blocking_read().is_some() {
+        tracing::info!("Crypto-UI: key derived from license");
+    } else {
+        tracing::info!("Crypto-UI: no license, open mode");
+    }
+
 
     let web_token = token.clone();
+    
     let web_handle = tokio::spawn(async move {
-        if let Err(e) = web::run_server(web_token).await {
+        if let Err(e) = web::run_server(web_token, ui_key).await {
             tracing::error!("web: {}", e);
         }
     });

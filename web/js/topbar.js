@@ -26,28 +26,39 @@ window.addEventListener('load', () => {
   updateTopClock();
   setInterval(updateTopClock, 1000);
 
+  document.getElementById('topbar-search')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (window.openSearch) window.openSearch();
+  });
+
   document.getElementById('topbar-sound')?.addEventListener('click', (e) => {
     e.stopPropagation();
     openPopover('pop-sound');
   });
+
   document.getElementById('topbar-brightness')?.addEventListener('click', (e) => {
     e.stopPropagation();
     openPopover('pop-brightness');
   });
+
   document.getElementById('topbar-dnd')?.addEventListener('click', (e) => {
     e.stopPropagation();
     const on = !window.getDnd();
     window.setDnd(on);
     window.showToast(on ? 'Do Not Disturb ON' : 'Do Not Disturb OFF', 'info', 1500);
   });
-  document.getElementById('topbar-search')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (window.openSearch) window.openSearch();
-  });
+
   document.getElementById('topbar-notif')?.addEventListener('click', (e) => {
     e.stopPropagation();
     window.showToast('Notifications: ' + document.querySelectorAll('.toast').length, 'info', 2000);
   });
+
+  // Clock -> calendar
+  document.getElementById('topbar-clock')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (window.openCalendar) window.openCalendar();
+  });
+  document.getElementById('topbar-clock')?.style.setProperty('cursor', 'pointer');
 
   document.addEventListener('click', closeAllPopovers);
 
@@ -61,6 +72,7 @@ window.addEventListener('load', () => {
       const v = parseInt(soundSlider.value, 10);
       window.setVolume(v);
       if (soundValue) soundValue.textContent = v + '%';
+      if (window.showOsd) window.showOsd('volume', v);
     };
     soundSlider.onchange = () => {
       const v = parseInt(soundSlider.value, 10);
@@ -78,6 +90,7 @@ window.addEventListener('load', () => {
       const v = parseInt(brSlider.value, 10);
       window.setBrightness(v);
       if (brValue) brValue.textContent = v + '%';
+      if (window.showOsd) window.showOsd('brightness', v);
     };
     brSlider.onchange = () => {
       const v = parseInt(brSlider.value, 10);

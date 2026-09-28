@@ -1,6 +1,6 @@
 ﻿[package]
 name = "aeroos"
-version = "4.6.0"
+version = "4.8.0"
 edition = "2021"
 authors = ["AeroOS Contributors"]
 description = "AeroOS — Portable OS for Windows in a single executable"
