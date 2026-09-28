@@ -36,12 +36,10 @@ mod registry;
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
-    tracing::info!("[AeroOS] v4.1.8 starting");
+    tracing::info!("[AeroOS] v4.3.0 Integrity starting");
 
-    // Sandbox (базовая изоляция)
     let _ = sandbox::init_sandbox(&["data", "snapshots"]);
 
-    // License
     let lic = license::LicenseState::load(std::path::Path::new("license.key"))
         .unwrap_or_else(|e| {
             tracing::warn!("License: {}", e);
@@ -50,42 +48,43 @@ async fn main() -> Result<()> {
     tracing::info!("Tier: {:?}, max_vms={}, max_ram={} MB",
         lic.tier, lic.max_vms(), lic.max_ram_mb());
 
-    // HWID
     if let Ok(hwid) = hwid::compute_hwid() {
         tracing::info!("HWID: {}", hwid);
     }
 
-    // GPU
     if let Ok(gpu) = gpu_passthrough::GpuPassthrough::new() {
         tracing::info!("GPU devices: {}", gpu.devices().len());
     }
 
-    // Registry
     if let Ok(reg) = registry::AeroRegistry::new() {
         tracing::info!("AeroRegistry ready ({} images)", reg.list().len());
     }
 
-    // Config
     let _ = security::verify_artifacts();
     let config = config::AeroConfig::load(&PathBuf::from("aeroos.config.toml"))?;
     tracing::info!("Config: {} CPU, {} MB RAM", config.cpu.cores, config.memory.ram_mb);
 
-    // Data folder
     let df = match data_folder::DataFolder::new(&config) {
         Ok(df) => { let _ = df.prepare(); df }
         Err(e) => { tracing::warn!("data_folder: {}", e); return Ok(()); }
     };
 
-    // Multi-VM manager
+    // AeroBoot preload — kernel + initramfs
+    {
+        let mut ab = boot::AeroBoot::new();
+        let kp = df.kernel_path();
+        let ip = df.initramfs_path();
+        match ab.load_from_data_folder(&kp, &ip) {
+            Ok(_) => tracing::info!("AeroBoot preload complete"),
+            Err(e) => tracing::warn!("AeroBoot preload: {}", e),
+        }
+    }
+
     let mut multi = multi_vm::MultiVmManager::new(lic.max_vms());
 
-    // Try to create VM (may fail if hypervisor off)
     let vm_opt: Option<hypervisor::VirtualMachine> =
         match hypervisor::VirtualMachine::new(&config, &df) {
-            Ok(vm) => {
-                tracing::info!("WHPX OK");
-                Some(vm)
-            }
+            Ok(vm) => { tracing::info!("WHPX OK"); Some(vm) }
             Err(e) => {
                 let m = format!("{}", e);
                 if m.contains("0xC0351000") || m.contains("WHvCreatePartition") {
@@ -103,11 +102,9 @@ async fn main() -> Result<()> {
             }
         };
 
-    // Session token
     let token = security::generate_session_token();
     tracing::info!("Token: {}...", &token[..8]);
 
-    // Web server (always)
     let web_token = token.clone();
     let web_handle = tokio::spawn(async move {
         if let Err(e) = web::run_server(web_token).await {
@@ -115,7 +112,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    // VM handle: either real VM, or "keep alive" future
     let vm_handle = if let Some(vm) = vm_opt {
         multi.create("default", "AeroOS Default", vm)?;
         let inst = multi.get("default").unwrap();
@@ -135,7 +131,6 @@ async fn main() -> Result<()> {
             }
         })
     } else {
-        // ВАЖНО: не даём main завершиться. Ждём вечно.
         tokio::spawn(async {
             tracing::info!("VM skipped (hypervisor off). UI is alive.");
             std::future::pending::<()>().await;
@@ -150,6 +145,5 @@ async fn main() -> Result<()> {
         _ = web_handle => tracing::info!("web stopped"),
         _ = vm_handle  => tracing::info!("vm stopped"),
     }
-
     Ok(())
 }

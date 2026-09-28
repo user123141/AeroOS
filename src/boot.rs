@@ -1,5 +1,9 @@
-//! AeroBoot — кастомный загрузчик AeroOS.
+﻿//! AeroBoot — кастомный загрузчик AeroOS.
 //! Поддерживает BIOS-цепочку и UEFI-загрузчик (.efi), оба на Rust.
+//!
+//! ВАЖНО: AeroBootHeader помечен `#[repr(C, packed)]` — это значит,
+//! что НЕЛЬЗЯ брать ссылку на его поля (создаёт UB, компилятор ловит
+//! как E0793). Все чтения — через копию в локальную переменную.
 
 extern crate std;
 
@@ -7,7 +11,7 @@ use anyhow::{Context, Result};
 use std::path::Path;
 
 pub const AERO_BOOT_MAGIC: u32 = 0x4145524F; // "AERO"
-pub const AERO_BOOT_VERSION: u16 = 0x0110; // 1.1.0
+pub const AERO_BOOT_VERSION: u16 = 0x0111; // 1.1.1
 
 #[repr(C, packed)]
 #[derive(Clone, Copy)]
@@ -72,14 +76,19 @@ impl AeroBoot {
     }
 
     pub fn verify(&self) -> bool {
-        self.header.magic == AERO_BOOT_MAGIC && self.header.version == AERO_BOOT_VERSION
+        // Копируем поля в локальные переменные (packed struct — нельзя брать refs)
+        let magic = self.header.magic;
+        let version = self.header.version;
+        magic == AERO_BOOT_MAGIC && version == AERO_BOOT_VERSION
     }
 
     /// Раскладывает бинарники в память VM.
     pub fn prepare_memory_layout(&self, guest_mem: *mut u8) -> Result<()> {
         unsafe {
+            // `&self.header as *const _` — это указатель, разрешено
+            let hdr_ptr = &self.header as *const AeroBootHeader as *const u8;
             std::ptr::copy_nonoverlapping(
-                &self.header as *const _ as *const u8,
+                hdr_ptr,
                 guest_mem.add(0x8000),
                 std::mem::size_of::<AeroBootHeader>(),
             );
@@ -98,19 +107,14 @@ impl AeroBoot {
         Ok(())
     }
 
-    /// Генерирует UEFI `.efi` образ, содержащий kernel + initramfs.
-    /// Формат: минимальный PE32+ с секцией `.aero`, содержащей наш payload.
+    /// Генерирует UEFI `.efi` образ.
     pub fn build_uefi_image(&self, out_path: &Path) -> Result<()> {
-        // Полноценный UEFI loader требует uefi-rs + target x86_64-unknown-uefi.
-        // Здесь создаём PE-подобную обёртку, которую загрузит прошивка OVMF/QEMU.
-        // Структура: [Header AeroBootHeader][kernel][initramfs]
         let mut blob = Vec::with_capacity(self.kernel_data.len() + self.initramfs_data.len() + 64);
         unsafe {
-            let hdr_bytes = std::slice::from_raw_parts(
-                &self.header as *const _ as *const u8,
-                std::mem::size_of::<AeroBootHeader>(),
-            );
-            blob.extend_from_slice(hdr_bytes);
+            let hdr_ptr = &self.header as *const AeroBootHeader as *const u8;
+            let hdr_slice =
+                std::slice::from_raw_parts(hdr_ptr, std::mem::size_of::<AeroBootHeader>());
+            blob.extend_from_slice(hdr_slice);
         }
         blob.extend_from_slice(&self.kernel_data);
         blob.extend_from_slice(&self.initramfs_data);
@@ -121,6 +125,32 @@ impl AeroBoot {
             out_path.display(),
             blob.len()
         );
+        Ok(())
+    }
+
+    /// Загрузить kernel + initramfs из DataFolder за один вызов.
+    pub fn load_from_data_folder(&mut self, kernel_path: &Path, initramfs_path: &Path) -> Result<()> {
+        if kernel_path.exists() {
+            self.load_kernel(kernel_path)?;
+            tracing::info!("AeroBoot: kernel loaded ({} bytes)", self.kernel_data.len());
+        }
+        if initramfs_path.exists() {
+            self.load_initramfs(initramfs_path)?;
+            tracing::info!(
+                "AeroBoot: initramfs loaded ({} bytes)",
+                self.initramfs_data.len()
+            );
+        }
+        self.compute_checksum();
+
+        // Копируем в локальную переменную — иначе E0793
+        let checksum = self.header.checksum;
+
+        if self.verify() {
+            tracing::info!("AeroBoot: header OK, checksum={:#010X}", checksum);
+        } else {
+            tracing::warn!("AeroBoot: header verification failed");
+        }
         Ok(())
     }
 }

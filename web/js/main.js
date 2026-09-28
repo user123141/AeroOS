@@ -1,11 +1,10 @@
-﻿// AeroOS main.js — окна, drag, focus, WebSocket
+﻿// AeroOS main.js v4.3.0 — drag, focus, toast, WS
 
 const WS = 'ws://127.0.0.1:8081';
 let ws = null;
 let sessionToken = '';
 let zCounter = 100;
 
-// === WebSocket ===
 async function fetchToken() {
   try {
     const r = await fetch('/api/token');
@@ -21,9 +20,13 @@ function connectWS() {
     send({ type: 'GetStatus' });
     send({ type: 'GetStats' });
     send({ type: 'ListVms' });
+    if (window.showToast) showToast('AeroOS connected', 'success', 2000);
   };
   ws.onmessage = e => handle(JSON.parse(e.data));
-  ws.onclose = () => setTimeout(connectWS, 3000);
+  ws.onclose = () => {
+    if (window.showToast) showToast('Disconnected. Reconnecting...', 'warning', 2000);
+    setTimeout(connectWS, 3000);
+  };
   ws.onerror = () => {};
 }
 
@@ -51,10 +54,14 @@ function handle(d) {
       if (window.updateTimeline) window.updateTimeline(d.list);
       break;
     case 'Serial':
-      if (window.term) window.term.write(d.data);
-      break;
     case 'TerminalOutput':
       if (window.term) window.term.write(d.data);
+      break;
+    case 'Ok':
+      if (window.showToast) showToast(d.message, 'success');
+      break;
+    case 'Error':
+      if (window.showToast) showToast(d.message, 'error');
       break;
   }
 }
@@ -64,7 +71,6 @@ function setText(id, v) {
   if (el) el.textContent = v;
 }
 
-// === Drag & Drop окон ===
 function bringToFront(win) {
   win.style.zIndex = ++zCounter;
 }
@@ -74,86 +80,84 @@ function makeDraggable(win) {
   if (!header) return;
 
   let dragging = false;
-  let offsetX = 0, offsetY = 0;
-
-  header.style.cursor = 'grab';
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
 
   header.addEventListener('mousedown', (e) => {
     if (e.target.closest('.window-controls')) return;
     if (e.button !== 0) return;
 
-    dragging = true;
-    header.style.cursor = 'grabbing';
-
     const rect = win.getBoundingClientRect();
-    offsetX = e.clientX - rect.left;
-    offsetY = e.clientY - rect.top;
 
-    // Переводим в absolute позиционирование
+    // Switch from transform-centered to absolute px
     win.style.transform = 'none';
     win.style.left = rect.left + 'px';
-    win.style.top = rect.top + 'px';
-    win.style.right = 'auto';
-    win.style.bottom = 'auto';
-    win.style.margin = '0';
+    win.style.top  = rect.top  + 'px';
 
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = rect.left;
+    startTop  = rect.top;
+    win.classList.add('dragging');
     bringToFront(win);
     e.preventDefault();
   });
 
   document.addEventListener('mousemove', (e) => {
     if (!dragging) return;
-    const x = Math.max(0, Math.min(window.innerWidth - win.offsetWidth, e.clientX - offsetX));
-    const y = Math.max(0, Math.min(window.innerHeight - win.offsetHeight, e.clientY - offsetY));
-    win.style.left = x + 'px';
-    win.style.top = y + 'px';
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const w = win.offsetWidth, h = win.offsetHeight;
+    const nx = Math.max(0, Math.min(window.innerWidth  - w, startLeft + dx));
+    const ny = Math.max(0, Math.min(window.innerHeight - h, startTop  + dy));
+    win.style.left = nx + 'px';
+    win.style.top  = ny + 'px';
   });
 
   document.addEventListener('mouseup', () => {
     if (dragging) {
       dragging = false;
-      header.style.cursor = 'grab';
+      win.classList.remove('dragging');
     }
   });
 
-  // Фокус при клике
   win.addEventListener('mousedown', () => bringToFront(win));
 }
 
-// === Window controls (close/min/max) ===
 function initWindowControls(win) {
   win.querySelector('.ctrl-close')?.addEventListener('click', () => {
     win.classList.add('hidden');
+    if (window.playSound) playSound('click');
   });
-
   win.querySelector('.ctrl-min')?.addEventListener('click', () => {
     win.classList.add('minimized');
-    setTimeout(() => {
-      win.classList.remove('minimized');
-    }, 250);
+    if (window.playSound) playSound('click');
   });
-
   win.querySelector('.ctrl-max')?.addEventListener('click', () => {
     win.classList.toggle('maximized');
+    if (window.playSound) playSound('click');
   });
-
   win.querySelector('.ctrl-theme')?.addEventListener('click', () => {
     if (window.toggleTheme) window.toggleTheme();
   });
 }
 
-// === Dock ===
 function initDock() {
   document.querySelectorAll('.dock-item').forEach(item => {
     item.addEventListener('click', () => {
       const app = item.dataset.app;
       const win = document.getElementById('window-' + app);
       if (!win) return;
-
       win.classList.remove('hidden');
       win.classList.remove('minimized');
+      // Reset position to centered if it was moved
+      if (win.style.left) {
+        win.style.left = '';
+        win.style.top = '';
+        win.style.transform = '';
+      }
       bringToFront(win);
-
+      if (window.playSound) playSound('click');
       if (app === 'terminal' && window.initTerminal) window.initTerminal();
       if (app === 'timeline') send({ type: 'ListSnapshots' });
       if (app === 'dashboard') send({ type: 'ListVms' });
@@ -161,33 +165,17 @@ function initDock() {
   });
 }
 
-// === Init ===
 document.addEventListener('DOMContentLoaded', async () => {
   await fetchToken();
   connectWS();
-
-  // Все окна — draggable
   document.querySelectorAll('.window').forEach(win => {
     makeDraggable(win);
     initWindowControls(win);
   });
-
   initDock();
-
-  // Periodic stats
   setInterval(() => send({ type: 'GetStats' }), 2000);
   setInterval(() => send({ type: 'ListVms' }), 3000);
 });
 
-// Re-apply translations when language changes
-window.addEventListener('aero-lang-changed', () => {
-  const status = document.getElementById('vm-status');
-  if (status && status.textContent) {
-    const running = status.textContent === 'Running' || status.textContent === 'Работает';
-    status.textContent = running ? t('running') : t('stopped');
-  }
-});
-
-// Expose
 window.send = send;
 window.bringToFront = bringToFront;

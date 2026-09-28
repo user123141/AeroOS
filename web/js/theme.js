@@ -11,6 +11,7 @@ window.toggleTheme = function () {
   applyTheme(THEMES[themeIdx]);
   const sel = document.getElementById('theme-select');
   if (sel) sel.value = THEMES[themeIdx];
+  if (window.showToast) showToast('Theme: ' + THEMES[themeIdx], 'info', 1500);
 };
 
 window.addEventListener('load', () => {
@@ -46,5 +47,17 @@ window.addEventListener('load', () => {
       document.documentElement.style.setProperty('--accent', accent.value);
       document.documentElement.style.setProperty('--accent-glow', accent.value + '66');
     };
+  }
+
+  const brightness = document.getElementById('brightness-slider');
+  if (brightness) {
+    brightness.value = window.getBrightness();
+    brightness.oninput = () => window.setBrightness(parseInt(brightness.value, 10));
+  }
+
+  const volume = document.getElementById('volume-slider');
+  if (volume) {
+    volume.value = window.getVolume();
+    volume.oninput = () => window.setVolume(parseInt(volume.value, 10));
   }
 });

@@ -81,7 +81,7 @@
 
 ## Boot sequence (что смотреть)
 
-1. `[AeroOS] v4.2.0 starting`
+1. `[AeroOS] v4.3.0 starting`
 2. `Sandbox token acquired`
 3. `Tier: Community`
 4. `HWID: ...`
@@ -110,10 +110,10 @@
 ## Известные проблемы
 
 1. **Кракозябры в логе** — русский текст в tracing! пишется в UTF-8, консоль читает CP866
-   - Решение: перевести все сообщения на английский (сделано в v4.2.0)
+   - Решение: перевести все сообщения на английский (сделано в v4.3.0)
 2. **NativeCommandError** от cargo — PowerShell 5.1 ругается на stderr
    - Решение: `cmd /c "cargo ... 2>&1"`
-3. **test_parse_manifest падал** — fix в v4.2.0 (media_type в JSON)
+3. **test_parse_manifest падал** — fix в v4.3.0 (media_type в JSON)
 
 ## Оптимизации
 

@@ -8,6 +8,54 @@
 
 
 
+
+
+
+## [4.3.2] - 2026-09-28 - hotfix
+
+### Fixed
+- **КРИТИЧНО:** `boot.rs` — E0793 "reference to field of packed struct is unaligned". Теперь все чтения полей `AeroBootHeader` идут через локальные копии.
+- `load_from_data_folder` — `checksum` копируется в local перед `tracing::info!`
+- `verify()` — читает `magic`/`version` через локальные копии
+
+### Added
+- Toast click-to-close
+- Clock: дата показывается при наведении (`title`)
+- `license::derive_ui_key()` — каркас для v4.4.0 (крипто-привязка UI)
+## [4.3.1] - 2026-09-28 - hotfix
+
+### Fixed
+- **КРИТИЧНО:** `boot::AeroBoot::new().into()` — убран бессмысленный `.into()` (E0277)
+- **КРИТИЧНО:** `Option::<AeroBoot>::Some(...)` — упрощён вызов
+- Скрипт: функции `W`/`Rm` переименованы в `Aero-W`/`Aero-Rm` — больше не конфликтуют с алиасами PowerShell
+
+### Added
+- `AeroBoot::load_from_data_folder()` — удобный helper
+## [4.3.0] - 2026-09-28 - "Integrity"
+
+### Fixed
+- **КРИТИЧНО:** окна больше не дёргаются при drag/minimize (конфликт `transform` + `transition`)
+- Кнопка minimize теперь плавно скрывает окно, restore через док
+- Кнопка maximize корректно растягивает на весь экран
+- `vm-tabs.js` подключён к реальному API (`ListVms`)
+
+### Added
+- **Toast notifications** (`web/js/notifications.js`) — success / warning / error / info
+- **Sound engine** (Web Audio API) — нет аудиофайлов, всё синтезируется
+- **Clock** в заголовке dashboard
+- **Brightness control** (CSS overlay) — слайдер в настройках
+- **Volume control** — слайдер в настройках
+- **AeroBoot** preload — kernel + initramfs подготавливаются через `boot.rs`
+
+### Changed
+- `docs/README.md`, `docs/STRUCTURE.md` — удалены (дубликаты / генерируются)
+- Документация собрана в одном `README.md` в корне
+- Стили тостов вынесены в `web/css/notifications.css`
+
+### Planned (v4.4.0)
+- Криптографическая привязка UI к лицензии
+- End-to-end boot Alpine kernel
+- 9P full read/write через virtio-fs
 ## [4.2.0] - 2026-09-28 — "Interface"
 
 ### Added
