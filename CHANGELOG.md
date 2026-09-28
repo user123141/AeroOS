@@ -13,6 +13,32 @@
 
 
 
+
+## [4.6.0] - 2026-09-28 - "Polish"
+
+### Fixed
+- **КРИТИЧНО:** `patch` файл: `AeroW_api = @'...'@` не работало — теперь используем `Aero-W`
+- **КРИТИЧНО:** Часы из окна dashboard убраны (дублировались с topbar)
+- Версия в UI: v4.3.0 → v4.6.0
+- Search: добавлен локальный fallback (если WS не отвечает за 300ms)
+
+### Added
+- **macOS-polish.css**: реальная macOS-эстетика
+  - Topbar: `app-region: drag` (перетаскивание окна), `saturate(180%)` blur
+  - Custom dark scrollbars (macOS-like)
+  - Sliders: белый thumb с shadow, hover/active анимация
+  - Toasts: Big Sur style (`rgba(28,28,30,0.82)` + blur 40px)
+  - Dock: z-index 9999 (не уходит под окна)
+  - Window close: scale(0.92) + fade
+
+### Changed
+- Topbar height: 32px → 28px (компактнее)
+- Topbar icons: 14px → 16px
+- Notif badge: 6px → 7px + box-shadow
+
+### Docs
+- `docs/API.md`: полная перезапись (все модули)
+- `docs/ROADMAP.md`: обновлён до v4.6.0
 ## [4.5.0] - 2026-09-28 - "Spotlight"
 
 ### Fixed
