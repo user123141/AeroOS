@@ -1,6 +1,6 @@
 ﻿[package]
 name = "aeroos"
-version = "4.3.2"
+version = "4.5.0"
 edition = "2021"
 authors = ["AeroOS Contributors"]
 description = "AeroOS — Portable OS for Windows in a single executable"
@@ -97,6 +97,7 @@ lto = "thin"
 codegen-units = 16
 strip = "symbols"
 panic = "abort"
+overflow-checks = false
 incremental = false
 
 [profile.dev]

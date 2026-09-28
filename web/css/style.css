@@ -418,3 +418,268 @@ body {
   .window { transition: none; }
 }
 .window.dragging { transition: none !important; }
+
+/* ============================================================
+   v4.4.0 additions - Top bar, dark selects, better UI
+   ============================================================ */
+
+/* --- Top Menu Bar (macOS style) --- */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  z-index: 9998;
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  user-select: none;
+}
+
+[data-theme="light"] .topbar {
+  background: rgba(255,255,255,0.65);
+  color: rgba(0,0,0,0.8);
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+
+.topbar-left { display: flex; gap: 16px; align-items: center; }
+.topbar-center { flex: 1; text-align: center; font-weight: 600; }
+.topbar-right { display: flex; gap: 14px; align-items: center; }
+
+.topbar-item {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.topbar-item:hover { background: rgba(255,255,255,0.1); }
+
+.topbar-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.topbar-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.topbar-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff5f57;
+  display: none;
+}
+
+.topbar-badge.on { display: block; }
+
+/* DND state */
+.topbar-item.dnd-on { color: #ff5f57; }
+
+/* Popover (sound/brightness sliders) */
+.popover {
+  position: fixed;
+  top: 40px;
+  right: 16px;
+  width: 260px;
+  padding: 16px;
+  background: rgba(20,20,28,0.85);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  z-index: 9999;
+  animation: pop-in 0.2s cubic-bezier(.34,1.56,.64,1);
+  display: none;
+}
+
+.popover.on { display: block; }
+
+@keyframes pop-in {
+  from { transform: translateY(-8px) scale(0.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.popover-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 10px;
+}
+
+.popover-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.popover-row svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: rgba(255,255,255,0.7);
+  flex-shrink: 0;
+}
+
+.popover-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  outline: none;
+}
+
+.popover-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4a9eff;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(74,158,255,0.6);
+}
+
+.popover-value {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Dark selects everywhere --- */
+select {
+  background-color: rgba(255,255,255,0.08) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 8px !important;
+  padding: 6px 28px 6px 12px !important;
+  font-size: 13px !important;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+}
+
+[data-theme="light"] select {
+  background-color: rgba(0,0,0,0.06) !important;
+  color: #1a1a2e !important;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231a1a2e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+}
+
+select option {
+  background: #1a1a2e;
+  color: #ffffff;
+}
+
+/* --- Better window animation --- */
+.window {
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+
+.window.closing {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9);
+}
+
+/* --- Settings sections --- */
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* --- Notifications v2 --- */
+.toast {
+  padding: 14px 16px 14px 14px;
+  min-width: 300px;
+  max-width: 400px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.toast-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.toast-info    .toast-icon-wrap { background: rgba(74,158,255,0.2); color: #4a9eff; }
+.toast-success .toast-icon-wrap { background: rgba(40,200,64,0.2);  color: #28c840; }
+.toast-warning .toast-icon-wrap { background: rgba(254,188,46,0.2); color: #febc2e; }
+.toast-error   .toast-icon-wrap { background: rgba(255,95,87,0.2);  color: #ff5f57; }
+
+.toast-content { flex: 1; min-width: 0; }
+
+.toast-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.toast-desc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  word-wrap: break-word;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+
+.toast-close:hover { color: #fff; }

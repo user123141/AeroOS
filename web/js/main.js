@@ -57,6 +57,9 @@ function handle(d) {
     case 'TerminalOutput':
       if (window.term) window.term.write(d.data);
       break;
+    case 'SearchResults':
+      window.dispatchEvent(new CustomEvent('aero-search-results', { detail: d }));
+      break;
     case 'Ok':
       if (window.showToast) showToast(d.message, 'success');
       break;

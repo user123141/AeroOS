@@ -1,4 +1,4 @@
-﻿// AeroOS System Controls: brightness + volume
+﻿// AeroOS System Controls v4.4.0 - brightness + volume.
 
 function getBrightnessOverlay() {
   let o = document.getElementById('brightness-overlay');
@@ -10,12 +10,17 @@ function getBrightnessOverlay() {
   return o;
 }
 
-window.setBrightness = function (value) {
-  // value: 0..100 (100 = max brightness)
-  const dim = (100 - value) / 200; // max dim 50%
+// Fallback dimming via CSS (visual only). Real brightness goes through IPC.
+window.setBrightnessVisual = function (value) {
+  const dim = (100 - value) / 250;
   const o = getBrightnessOverlay();
   o.style.opacity = String(dim);
+};
+
+window.setBrightness = function (value) {
+  value = Math.max(0, Math.min(100, value));
   localStorage.setItem('aero-brightness', String(value));
+  window.setBrightnessVisual(value);
 };
 
 window.getBrightness = function () {
@@ -23,6 +28,7 @@ window.getBrightness = function () {
 };
 
 window.setVolume = function (value) {
+  value = Math.max(0, Math.min(100, value));
   localStorage.setItem('aero-volume', String(value / 100));
 };
 
@@ -31,5 +37,5 @@ window.getVolume = function () {
 };
 
 window.addEventListener('load', () => {
-  setBrightness(getBrightness());
+  window.setBrightnessVisual(window.getBrightness());
 });

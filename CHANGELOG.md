@@ -11,6 +11,49 @@
 
 
 
+
+
+## [4.5.0] - 2026-09-28 - "Spotlight"
+
+### Fixed
+- **КРИТИЧНО:** `ipc.rs` — regex-replace сломал `match` структуру (arm без запятой). Полная перезапись.
+- **КРИТИЧНО:** `web/index.html` — PowerShell не может склеить строку через `+` в `-replace`. Заменено на `.Replace()`.
+- `snapshot::SnapshotManager.config` теперь `pub` (для DeleteSnapshot)
+
+### Added
+- **Spotlight Search** (Ctrl+K): поиск по приложениям, действиям, снапшотам
+- **IPC команды**: `Search`, `DeleteSnapshot`, `GetSystemState`
+- **Search hint**: клавиши навигации (↑↓, Enter, Esc)
+- **Cargo.toml**: `overflow-checks = false` (явно)
+- **Документация**: обновлены `docs/API.md`, `docs/ROADMAP.md`
+
+### Changed
+- Окна при открытии снова центрируются (drag-смещение сбрасывается)
+- `main.js` теперь пробрасывает `SearchResults` через CustomEvent
+## [4.4.0] - 2026-09-28 - "Cohesion"
+
+### Added
+- **Top menu bar (macOS style)**: app name, clock with day, notification bell, DND toggle, sound, brightness
+- **Real system control** via `src/syscontrol.rs`:
+  - Volume: `winmm.dll::waveOutSetVolume` (system default device)
+  - Brightness: WMI `WmiSetBrightness` (laptops with internal displays)
+- **Popovers** for sound and brightness with sliders
+- **IPC commands**: `SetVolume`, `SetBrightness`, `GetSystemState`
+- **DND mode** (Do Not Disturb): suppresses non-error toasts, persisted in localStorage
+- **Notification queue**: max 3 visible, oldest auto-dismissed
+- **Dark-styled selects** everywhere (no more white dropdowns)
+- **Better sounds**: multi-note chords + attack/decay envelope (no raw oscillator beeps)
+- **SVG icons** in notifications
+- Toast click-to-close (X button)
+- Window close animation (`scale(0.9) + fade`)
+
+### Changed
+- `system.js` now uses IPC for real control (CSS overlay only as visual fallback)
+- CSS: added `.topbar`, `.popover`, dark `select option` styling
+
+### Known issues
+- Brightness control fails on desktop PCs (no WMI brightness methods) - falls back silently
+- Volume is per-device (default output), not per-application
 ## [4.3.2] - 2026-09-28 - hotfix
 
 ### Fixed

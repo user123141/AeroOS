@@ -17,13 +17,18 @@ pub enum Command {
     Snapshot { name: String },
     Restore { name: String },
     ListSnapshots,
+    DeleteSnapshot { name: String },
     GetStatus,
     GetStats,
     ListVms,
     GetSerial,
     ClearSerial,
+    SetVolume { level: u32 },
+    SetBrightness { level: u32 },
+    GetSystemState,
     Stop,
     TerminalInput { data: String },
+    Search { query: String },
 }
 
 #[derive(Debug, Serialize)]
@@ -37,6 +42,8 @@ pub enum Response {
     VmsList { vms: Vec<VmStatsInfo> },
     Serial { data: String },
     TerminalOutput { data: String },
+    SystemState { volume: u32, brightness: u32, dnd: bool },
+    SearchResults { items: Vec<SearchItem> },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -46,6 +53,14 @@ pub struct VmStatsInfo {
     pub running: bool,
     pub snapshots: u64,
     pub dirty_pages: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SearchItem {
+    pub id: String,
+    pub title: String,
+    pub subtitle: String,
+    pub category: String,
 }
 
 pub struct IpcState {
@@ -88,9 +103,10 @@ async fn handle_connection(
     let ws = tokio_tungstenite::accept_hdr_async(
         stream,
         move |req: &tokio_tungstenite::tungstenite::handshake::server::Request, resp| {
-            let ok = req.uri().query().map_or(false, |q| {
-                q.split('&').any(|p| p == format!("token={}", token))
-            });
+            let ok = req
+                .uri()
+                .query()
+                .map_or(false, |q| q.split('&').any(|p| p == format!("token={}", token)));
             if !ok {
                 return Err(tokio_tungstenite::tungstenite::handshake::server::ErrorResponse::new(
                     Some("Unauthorized".into()),
@@ -98,7 +114,8 @@ async fn handle_connection(
             }
             Ok(resp)
         },
-    ).await?;
+    )
+    .await?;
 
     let (mut write, mut read) = ws.split();
 
@@ -108,14 +125,18 @@ async fn handle_connection(
             let cmd: Command = match serde_json::from_str(&text) {
                 Ok(c) => c,
                 Err(e) => {
-                    let err = Response::Error { message: format!("Parse error: {}", e) };
+                    let err = Response::Error {
+                        message: format!("Parse error: {}", e),
+                    };
                     write.send(Message::Text(serde_json::to_string(&err)?)).await?;
                     continue;
                 }
             };
 
             let resp = process_command(cmd, &state).await;
-            write.send(Message::Text(serde_json::to_string(&resp)?)).await?;
+            write
+                .send(Message::Text(serde_json::to_string(&resp)?))
+                .await?;
         }
     }
 
@@ -136,7 +157,10 @@ async fn process_command(cmd: Command, state: &IpcState) -> Response {
         Command::GetStats => {
             let vm = state.vm.lock().await;
             let s = vm.stats();
-            Response::Stats { snapshots: s.snapshots, dirty_pages: s.dirty_pages }
+            Response::Stats {
+                snapshots: s.snapshots,
+                dirty_pages: s.dirty_pages,
+            }
         }
         Command::ListVms => {
             let vm = state.vm.lock().await;
@@ -154,16 +178,22 @@ async fn process_command(cmd: Command, state: &IpcState) -> Response {
         Command::GetSerial => {
             let vm = state.vm.lock().await;
             let data = vm.read_serial();
-            Response::Serial { data: String::from_utf8_lossy(&data).into() }
+            Response::Serial {
+                data: String::from_utf8_lossy(&data).into(),
+            }
         }
         Command::ClearSerial => {
             let vm = state.vm.lock().await;
             vm.clear_serial();
-            Response::Ok { message: "Serial cleared".into() }
+            Response::Ok {
+                message: "Serial cleared".into(),
+            }
         }
         Command::Stop => {
             state.vm.lock().await.stop();
-            Response::Ok { message: "Stopped".into() }
+            Response::Ok {
+                message: "Stopped".into(),
+            }
         }
         Command::Snapshot { name } => {
             let vm = state.vm.lock().await;
@@ -172,11 +202,17 @@ async fn process_command(cmd: Command, state: &IpcState) -> Response {
                     drop(vm);
                     let mut mgr = state.snapshots.lock().await;
                     match mgr.create_snapshot(&data, &name) {
-                        Ok(_) => Response::Ok { message: format!("Snapshot '{}' created", name) },
-                        Err(e) => Response::Error { message: e.to_string() },
+                        Ok(_) => Response::Ok {
+                            message: format!("Snapshot '{}' created", name),
+                        },
+                        Err(e) => Response::Error {
+                            message: e.to_string(),
+                        },
                     }
                 }
-                Err(e) => Response::Error { message: e.to_string() },
+                Err(e) => Response::Error {
+                    message: e.to_string(),
+                },
             }
         }
         Command::Restore { name } => {
@@ -186,20 +222,120 @@ async fn process_command(cmd: Command, state: &IpcState) -> Response {
                     drop(mgr);
                     let mut vm = state.vm.lock().await;
                     match vm.restore_state(&data) {
-                        Ok(_) => Response::Ok { message: format!("Snapshot '{}' restored", name) },
-                        Err(e) => Response::Error { message: e.to_string() },
+                        Ok(_) => Response::Ok {
+                            message: format!("Snapshot '{}' restored", name),
+                        },
+                        Err(e) => Response::Error {
+                            message: e.to_string(),
+                        },
                     }
                 }
-                Err(e) => Response::Error { message: e.to_string() },
+                Err(e) => Response::Error {
+                    message: e.to_string(),
+                },
             }
         }
         Command::ListSnapshots => {
             let mgr = state.snapshots.lock().await;
-            Response::Snapshots { list: mgr.list_snapshots() }
+            Response::Snapshots {
+                list: mgr.list_snapshots(),
+            }
+        }
+        Command::DeleteSnapshot { name } => {
+            let dir = std::path::PathBuf::from(&state.snapshots.lock().await.config.dir);
+            let p = dir.join(format!("{}.snap", name));
+            if p.exists() {
+                let _ = std::fs::remove_file(&p);
+                Response::Ok {
+                    message: format!("Snapshot '{}' deleted", name),
+                }
+            } else {
+                Response::Error {
+                    message: format!("Snapshot '{}' not found", name),
+                }
+            }
+        }
+        Command::SetVolume { level } => {
+            let level = level.min(100);
+            match crate::syscontrol::set_volume(level) {
+                Ok(_) => Response::Ok {
+                    message: format!("Volume: {} pct", level),
+                },
+                Err(e) => Response::Error {
+                    message: e.to_string(),
+                },
+            }
+        }
+        Command::SetBrightness { level } => {
+            let level = level.min(100);
+            match crate::syscontrol::set_brightness(level) {
+                Ok(_) => Response::Ok {
+                    message: format!("Brightness: {} pct", level),
+                },
+                Err(e) => Response::Error {
+                    message: e.to_string(),
+                },
+            }
+        }
+        Command::GetSystemState => {
+            let volume = crate::syscontrol::get_volume().unwrap_or(50);
+            let brightness = crate::syscontrol::get_brightness().unwrap_or(100);
+            Response::SystemState {
+                volume,
+                brightness,
+                dnd: false,
+            }
         }
         Command::TerminalInput { data } => {
             tracing::info!(target: "terminal", "input: {}", data);
-            Response::TerminalOutput { data: format!("$ {}\r\n", data.trim()) }
+            Response::TerminalOutput {
+                data: format!("$ {}\r\n", data.trim()),
+            }
+        }
+        Command::Search { query } => {
+            let mut items = Vec::new();
+            let q = query.to_lowercase();
+
+            // Static commands
+            let static_cmds = vec![
+                ("open-dashboard", "Open Dashboard", "App", "Show main dashboard"),
+                ("open-terminal", "Open Terminal", "App", "Open AeroTerm"),
+                ("open-timeline", "Open Time Travel", "App", "Snapshots timeline"),
+                ("open-settings", "Open Settings", "App", "System settings"),
+                ("toggle-theme", "Toggle theme", "Action", "Dark / Light / Aero"),
+                ("create-snapshot", "Create snapshot", "Snapshot", "Save VM state"),
+                ("stop-vm", "Stop VM", "VM", "Graceful shutdown"),
+            ];
+            for (id, title, cat, sub) in static_cmds {
+                if q.is_empty()
+                    || title.to_lowercase().contains(&q)
+                    || sub.to_lowercase().contains(&q)
+                    || cat.to_lowercase().contains(&q)
+                {
+                    items.push(SearchItem {
+                        id: id.into(),
+                        title: title.into(),
+                        subtitle: sub.into(),
+                        category: cat.into(),
+                    });
+                }
+            }
+
+            // Dynamic: snapshots
+            let mgr = state.snapshots.lock().await;
+            for s in mgr.list_snapshots() {
+                if q.is_empty() || s.to_lowercase().contains(&q) {
+                    items.push(SearchItem {
+                        id: format!("snap-{}", s),
+                        title: format!("Restore: {}", s),
+                        subtitle: "Snapshot".into(),
+                        category: "Snapshot".into(),
+                    });
+                }
+            }
+
+            items.truncate(12);
+            Response::SearchResults { items }
         }
     }
 }

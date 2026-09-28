@@ -31,6 +31,7 @@ mod hwid;
 mod aerofile;
 mod multi_vm;
 mod sandbox;
+mod syscontrol;
 mod registry;
 
 #[tokio::main]

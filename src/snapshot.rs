@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 use tokio::time::{interval, Duration};
 
 pub struct SnapshotManager {
-    config: SnapshotConfig,
+    pub config: SnapshotConfig,
     block_index: HashMap<String, PathBuf>,
     bytes_written: u64,
 }
